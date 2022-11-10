@@ -3,7 +3,7 @@ package com.lagradost
 import com.lagradost.cloudstream3.plugins.CloudstreamPlugin
 import com.lagradost.cloudstream3.plugins.Plugin
 import android.content.Context
-import com.lagradost.cloudstream3.animeproviders.MonoschinosProvider
+import com.lagradost.cloudstream3.animeproviders.AnimefenixProvider
 
 @CloudstreamPlugin
 class AnimefenixProviderPlugin: Plugin() {
