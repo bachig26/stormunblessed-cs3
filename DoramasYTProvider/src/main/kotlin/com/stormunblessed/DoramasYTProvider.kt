@@ -138,14 +138,7 @@ class DoramasYTProvider : MainAPI() {
             val urlDecoded = base64Decode(encodedurl)
             val url = (urlDecoded).replace("https://doramasyt.com/reproductor?url=", "")
                 .replace("https://www.doramasyt.com/reproductor?url=","")
-            if (url.startsWith("https://www.fembed.com")) {
-                val extractor = FEmbed()
-                extractor.getUrl(url).forEach { link ->
-                    callback.invoke(link)
-                }
-            } else {
                 loadExtractor(url, mainUrl, subtitleCallback, callback)
-            }
         }
         return true
     }
