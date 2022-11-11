@@ -35,8 +35,9 @@ class MundoDonghuaProvider : MainAPI() {
                 app.get(mainUrl, timeout = 120).document.select("div.row .col-xs-4").map {
                     val title = it.selectFirst("h5")?.text() ?: ""
                     val poster = it.selectFirst(".fit-1 img")?.attr("src")
-                    val epRegex = Regex("(\\/(\\d+)\$)")
+                    val epRegex = Regex("(\\/(\\d+)\$|\\/(\\d+).\\/.*)")
                     val url = it.selectFirst("a")?.attr("href")?.replace(epRegex,"")?.replace("/ver/","/donghua/")
+                        ?.replace(Regex("$/|$(\\d+)"),"")
                     val epnumRegex = Regex("((\\d+)$)")
                     val epNum = epnumRegex.find(title)?.value?.toIntOrNull()
                     val dubstat = if (title.contains("Latino") || title.contains("Castellano")) DubStatus.Dubbed else DubStatus.Subbed
