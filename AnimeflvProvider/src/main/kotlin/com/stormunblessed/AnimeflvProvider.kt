@@ -69,7 +69,7 @@ class AnimeflvnetProvider : MainAPI() {
                         fixUrl(it.selectFirst("a")?.attr("href") ?: return@mapNotNull null)
                     ) {
                         this.posterUrl = fixUrl(poster)
-                        addDubStatus(MonoschinosProvider.getDubStatus(title))
+                        addDubStatus(getDubStatus(title))
                     }
                 }
 
