@@ -1,7 +1,6 @@
 package com.lagradost.cloudstream3.movieproviders
 
 import com.fasterxml.jackson.annotation.JsonProperty
-import com.google.android.gms.dynamite.DynamiteModule.LoadingException
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.AppUtils.parseJson
 import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
@@ -190,7 +189,7 @@ class PelispediaProvider:MainAPI() {
 
     }
 
-    private fun getStream(MovieStream: List<MovieStreams>,
+    /*   private fun getStream(MovieStream: List<MovieStreams>,
                           callback: (ExtractorLink) -> Unit,
                           subtitleCallback: (SubtitleFile) -> Unit
     ): List<Unit> = MovieStream.apmap {
@@ -203,7 +202,7 @@ class PelispediaProvider:MainAPI() {
                 }
             }
         }
-    }
+    } */
 
     override suspend fun loadLinks(
         data: String,
@@ -215,11 +214,13 @@ class PelispediaProvider:MainAPI() {
         val isMovie = tvType == TvType.Movie
         if (isMovie) {
             val jsonmovie = parseJson<List<MovieStreams>>(data)
-            getStream(jsonmovie, callback, subtitleCallback)
+            loadExtractor(jsonmovie, mainUrl, subtitleCallback, callback)
+            //getStream(jsonmovie, callback, subtitleCallback)
         } else {
             val response = app.get(data).text
             val jsonserie = parseJson<List<MovieStreams>>(response)
-            getStream(jsonserie, callback, subtitleCallback)
+            loadExtractor(jsonserie, mainUrl, subtitleCallback, callback)
+            //getStream(jsonserie, callback, subtitleCallback)
         }
         return true
     }

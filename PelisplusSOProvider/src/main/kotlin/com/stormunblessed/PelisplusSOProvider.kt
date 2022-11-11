@@ -209,7 +209,7 @@ class PelisplusSOProvider:MainAPI() {
         return true
     }
 
-    private suspend fun loadExtractor2(
+  /*  private suspend fun loadExtractor2(
         url: String,
         lang: String,
         referer: String,
@@ -225,7 +225,7 @@ class PelisplusSOProvider:MainAPI() {
             }
         }
         return true
-    }
+    } */
 
     override suspend fun loadLinks(
         data: String,
@@ -247,10 +247,12 @@ class PelisplusSOProvider:MainAPI() {
                     getPelisStream(url, lang ,callback)
                     doc.select("ul.list-server-items li").map {
                         val secondurl = fixUrl(it.attr("data-video"))
-                        loadExtractor2(secondurl, lang, data, callback, subtitleCallback)
+                        loadExtractor(secondurl, mainUrl, subtitleCallback, callback)
+                        //loadExtractor2(secondurl, lang, data, callback, subtitleCallback)
                     }
                 }
-                loadExtractor2(url, lang, data, callback, subtitleCallback)
+                loadExtractor(url, mainUrl, subtitleCallback, callback)
+                //loadExtractor2(url, lang, data, callback, subtitleCallback)
             }
         }
         return true
