@@ -8,6 +8,8 @@ import com.lagradost.cloudstream3.utils.extractorApis
 import com.lagradost.cloudstream3.utils.getQualityFromName
 import org.jsoup.Jsoup
 import java.util.*
+import com.lagradost.cloudstream3.utils.loadExtractor
+
 
 class PelisplusSOProvider:MainAPI() {
     override var mainUrl = "https://pelisplus.so"
