@@ -1,14 +1,14 @@
-package com.lagradost
+package com.stormunblessed
 
 import com.lagradost.cloudstream3.plugins.CloudstreamPlugin
 import com.lagradost.cloudstream3.plugins.Plugin
 import android.content.Context
-import com.lagradost.cloudstream3.animeproviders.AnimefenixProvider
+import com.lagradost.cloudstream3.animeproviders.AnimeflvProvider
 
 @CloudstreamPlugin
-class AnimefenixProviderPlugin: Plugin() {
+class AnimeflvProviderPlugin: Plugin() {
     override fun load(context: Context) {
         // All providers should be added in this manner. Please don't edit the providers list directly.
-        registerMainAPI(AnimefenixProvider())
+        registerMainAPI(AnimeflvProvider())
     }
 }
