@@ -149,7 +149,6 @@ class PelispediaProvider:MainAPI() {
                 val textseason = app.get(seasonlink).text
                 val jsonseasons = parseJson<List<EpisodesMetadata>>(textseason)
                 val season = seasonlink.substringAfter("/temp/").toIntOrNull()
-                println("SEASON $season")
                 jsonseasons.map { epdata ->
                     val epnum = epdata.episodeNumber
                     val eplink = "$mainUrl/hcapi/serie/cap/${epdata.episodeId}"
@@ -214,12 +213,16 @@ class PelispediaProvider:MainAPI() {
         val isMovie = tvType == TvType.Movie
         if (isMovie) {
             val jsonmovie = parseJson<List<MovieStreams>>(data)
-            loadExtractor(jsonmovie, mainUrl, subtitleCallback, callback)
-            //getStream(jsonmovie, callback, subtitleCallback)
+            jsonmovie.map {
+                loadExtractor(it.link, mainUrl, subtitleCallback, callback)
+            }
+           // loadExtractor(jsonmovie, mainUrl, subtitleCallback, callback)
         } else {
             val response = app.get(data).text
             val jsonserie = parseJson<List<MovieStreams>>(response)
-            loadExtractor(jsonserie, mainUrl, subtitleCallback, callback)
+            jsonserie.map {
+                loadExtractor(it.link, mainUrl, subtitleCallback, callback)
+            }
             //getStream(jsonserie, callback, subtitleCallback)
         }
         return true
