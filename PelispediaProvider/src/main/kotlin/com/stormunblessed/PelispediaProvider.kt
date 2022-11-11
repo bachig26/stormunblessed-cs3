@@ -214,14 +214,14 @@ class PelispediaProvider:MainAPI() {
         if (isMovie) {
             val jsonmovie = parseJson<List<MovieStreams>>(data)
             jsonmovie.map {
-                loadExtractor(it.link, mainUrl, subtitleCallback, callback)
+                loadExtractor(it.link!!, mainUrl, subtitleCallback, callback)
             }
            // loadExtractor(jsonmovie, mainUrl, subtitleCallback, callback)
         } else {
             val response = app.get(data).text
             val jsonserie = parseJson<List<MovieStreams>>(response)
             jsonserie.map {
-                loadExtractor(it.link, mainUrl, subtitleCallback, callback)
+                loadExtractor(it.link!!, mainUrl, subtitleCallback, callback)
             }
             //getStream(jsonserie, callback, subtitleCallback)
         }
