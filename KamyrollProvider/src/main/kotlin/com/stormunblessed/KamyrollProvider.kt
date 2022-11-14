@@ -14,6 +14,7 @@ class KamyrollProvider: MainAPI() {
     }
     override var name = "Kamyroll BETA"
     override var mainUrl = "https://api.kamyroll.tech" //apirurl
+    override var lang = "es"
     override val instantLinkLoading = false
     override val hasMainPage = true
     override val supportedTypes = setOf(
