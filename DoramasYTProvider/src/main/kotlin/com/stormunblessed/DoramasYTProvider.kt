@@ -46,7 +46,7 @@ class DoramasYTProvider : MainAPI() {
         )
 
         val items = ArrayList<HomePageList>()
-
+        var isHorizontal = true
         items.add(
             HomePageList(
                 "Capítulos actualizados",
@@ -61,7 +61,7 @@ class DoramasYTProvider : MainAPI() {
                         this.posterUrl = fixUrl(poster)
                         addDubStatus(getDubStatus(title), epNum)
                     }
-                })
+                }, isHorizontal)
         )
 
         urls.apmap { (url, name) ->

@@ -44,7 +44,7 @@ class MonoschinosProvider : MainAPI() {
         )
 
         val items = ArrayList<HomePageList>()
-
+        val isHorizontal = true
         items.add(
             HomePageList(
                 "Capítulos actualizados",
@@ -63,7 +63,7 @@ class MonoschinosProvider : MainAPI() {
                         this.posterUrl = fixUrl(poster)
                         addDubStatus(getDubStatus(title), epNum)
                     }
-                })
+                }, isHorizontal)
         )
 
         urls.apmap { (url, name) ->

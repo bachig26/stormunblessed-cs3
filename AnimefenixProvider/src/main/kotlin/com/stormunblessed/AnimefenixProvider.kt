@@ -38,7 +38,7 @@ class AnimefenixProvider:MainAPI() {
         )
 
         val items = ArrayList<HomePageList>()
-
+        var isHorizontal = true
         items.add(
             HomePageList(
                 "Últimos episodios",
@@ -53,7 +53,7 @@ class AnimefenixProvider:MainAPI() {
                         this.posterUrl = poster
                         addDubStatus(getDubStatus(title), epNum)
                     }
-                })
+                }, isHorizontal)
         )
 
         urls.apmap { (url, name) ->

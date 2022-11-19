@@ -41,6 +41,7 @@ class AnimeflvnetProvider : MainAPI() {
             Pair("$mainUrl/browse?status[]=1&order=rating", "En emision"),
         )
         val items = ArrayList<HomePageList>()
+        var isHorizontal = true
         items.add(
             HomePageList(
                 "Últimos episodios",
@@ -56,7 +57,7 @@ class AnimeflvnetProvider : MainAPI() {
                         this.posterUrl = fixUrl(poster)
                         addDubStatus(getDubStatus(title), epNum)
                     }
-                })
+                }, isHorizontal)
         )
         for ((url, name) in urls) {
             try {

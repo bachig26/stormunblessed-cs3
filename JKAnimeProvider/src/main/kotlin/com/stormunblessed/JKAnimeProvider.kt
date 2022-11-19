@@ -49,7 +49,7 @@ class JKAnimeProvider : MainAPI() {
         )
 
         val items = ArrayList<HomePageList>()
-
+        val isHorizontal = true
         items.add(
             HomePageList(
                 "Últimos episodios",
@@ -67,7 +67,7 @@ class JKAnimeProvider : MainAPI() {
                         this.posterUrl = poster
                         addDubStatus(dubstat, epNum)
                     }
-                })
+                }, isHorizontal)
         )
         urls.apmap { (url, name) ->
             val soup = app.get(url).document
