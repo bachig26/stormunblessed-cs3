@@ -5,7 +5,7 @@ import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.loadExtractor
 
 class EntrepeliculasyseriesProvider : MainAPI() {
-    override var mainUrl = "https://entrepeliculasyseries.nu"
+    override var mainUrl = "https://entrepeliculasyseries.nz"
     override var name = "EntrePeliculasySeries"
     override var lang = "es"
     override val hasMainPage = true
@@ -154,7 +154,7 @@ class EntrepeliculasyseriesProvider : MainAPI() {
                         "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
                         "Accept-Language" to "en-US,en;q=0.5",
                         "Content-Type" to "application/x-www-form-urlencoded",
-                        "Origin" to "https://entrepeliculasyseries.nu",
+                        "Origin" to "https://entrepeliculasyseries.nz",
                         "DNT" to "1",
                         "Connection" to "keep-alive",
                         "Referer" to servers,
