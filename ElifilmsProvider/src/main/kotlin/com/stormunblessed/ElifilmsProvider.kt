@@ -5,7 +5,7 @@ import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.loadExtractor
 
 class ElifilmsProvider : MainAPI() {
-    override var mainUrl: String = "https://elifilms.org"
+    override var mainUrl: String = "https://allcalidad.ms/"
     override var name: String = "Elifilms"
     override var lang = "es"
     override val hasMainPage = true
@@ -24,21 +24,28 @@ class ElifilmsProvider : MainAPI() {
             Pair(newest, "Últimos estrenos"),
         )
         urls.apmap { (url, name) ->
+            val searchlist = ArrayList<TvSeriesSearchResponse>()
             val soup = app.get(url ?: "").document
             val home = soup.select("article.shortstory.cf").map {
                 val title = it.selectFirst(".short_header")?.text() ?: ""
                 val link = it.selectFirst("div a")?.attr("href") ?: ""
-                TvSeriesSearchResponse(
-                    title,
-                    link,
-                    this.name,
-                    TvType.Movie,
-                    it.selectFirst("a.ah-imagge img")?.attr("data-src"),
-                    null,
-                    null,
-                )
+                val verified = !link.contains("disney") && !link.contains("hbo-max")
+                val image = it.selectFirst("a.ah-imagge img")?.attr("data-src")
+                if (verified) {
+                    searchlist.add(
+                        TvSeriesSearchResponse(
+                            title,
+                            link,
+                            this.name,
+                            TvType.Movie,
+                            image,
+                            null,
+                            null,
+                        ))
+                }
+
             }
-            items.add(HomePageList(name, home))
+            items.add(HomePageList(name, searchlist))
         }
         if (items.size <= 0) throw ErrorLoadingException()
         return HomePageResponse(items)
