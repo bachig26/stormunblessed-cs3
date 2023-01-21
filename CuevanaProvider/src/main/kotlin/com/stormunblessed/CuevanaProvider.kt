@@ -23,7 +23,7 @@ class CuevanaProvider : MainAPI() {
     override suspend fun getMainPage(page: Int, request : MainPageRequest): HomePageResponse {
         val items = ArrayList<HomePageList>()
         val urls = listOf(
-            Pair(mainUrl, "Recientemente actualizadas"),
+            Pair("$mainUrl/inicio", "Recientemente actualizadas"),
             Pair("$mainUrl/estrenos/", "Estrenos"),
         )
         items.add(
@@ -106,6 +106,9 @@ class CuevanaProvider : MainAPI() {
         val title = soup.selectFirst("h1.Title")!!.text()
         val description = soup.selectFirst(".Description p")?.text()?.trim()
         val poster: String? = soup.selectFirst(".movtv-info div.Image img")!!.attr("data-src")
+        val backgrounposter = soup.selectFirst("html body.slider div#top-single.bd div.backdrop div.Image figure.Objf img.lazy")!!.attr("data-src")
+            .replace("\\/\\/", "/")
+        println("TESTING $backgrounposter")
         val year1 = soup.selectFirst("footer p.meta").toString()
         val yearRegex = Regex("<span>(\\d+)</span>")
         val yearf =
@@ -115,7 +118,7 @@ class CuevanaProvider : MainAPI() {
             val href = li.select("a").attr("href")
             val epThumb =
                 li.selectFirst("div.Image img")?.attr("data-src") ?: li.selectFirst("img.lazy")!!
-                    .attr("data-srcc")
+                    .attr("data-srcc").replace(Regex("\\/w\\d+\\/"),"/w780/")
             val seasonid = li.selectFirst("span.Year")!!.text().let { str ->
                 str.split("x").mapNotNull { subStr -> subStr.toIntOrNull() }
             }
@@ -190,124 +193,96 @@ class CuevanaProvider : MainAPI() {
     ): Boolean {
         app.get(data).document.select("div.TPlayer.embed_div iframe").apmap {
             val iframe = fixUrl(it.attr("data-src"))
-            if (iframe.contains("api.cuevana3.me/fembed/")) {
-                val femregex =
-                    Regex("(https.\\/\\/api\\.cuevana3\\.me\\/fembed\\/\\?h=[a-zA-Z0-9]{0,8}[a-zA-Z0-9_-]+)")
-                femregex.findAll(iframe).map { femreg ->
-                    femreg.value
-                }.toList().apmap { fem ->
-                    val key = fem.replace("https://api.cuevana3.me/fembed/?h=", "")
-                    val url = app.post(
-                        "https://api.cuevana3.me/fembed/api.php",
-                        allowRedirects = false,
-                        headers = mapOf(
-                            "Host" to "api.cuevana3.me",
-                            "User-Agent" to USER_AGENT,
-                            "Accept" to "application/json, text/javascript, */*; q=0.01",
-                            "Accept-Language" to "en-US,en;q=0.5",
-                            "Content-Type" to "application/x-www-form-urlencoded; charset=UTF-8",
-                            "X-Requested-With" to "XMLHttpRequest",
-                            "Origin" to "https://api.cuevana3.me",
-                            "DNT" to "1",
-                            "Connection" to "keep-alive",
-                            "Sec-Fetch-Dest" to "empty",
-                            "Sec-Fetch-Mode" to "cors",
-                            "Sec-Fetch-Site" to "same-origin",
-                        ),
-                        data = mapOf(Pair("h", key))
-                    ).text
-                    val json = parseJson<Femcuevana>(url)
-                    val link = json.url
-                    if (link.contains("fembed")) {
-                        loadExtractor(link, data, subtitleCallback, callback)
-                    }
+            if (iframe.contains(Regex("cuevana.*fembed"))) {
+                val femkey = iframe.substringAfter("?h=")
+                val femrequest = app.post("https://api.cuevana3.me/fembed/api.php", allowRedirects = false,
+                    headers = mapOf(
+                        "User-Agent" to USER_AGENT,
+                        "Accept" to "application/json, text/javascript, */*; q=0.01",
+                        "Accept-Language" to "en-US,en;q=0.5",
+                        "Content-Type" to "application/x-www-form-urlencoded; charset=UTF-8",
+                        "X-Requested-With" to "XMLHttpRequest",
+                        "DNT" to "1",
+                        "Connection" to "keep-alive",
+                        "Sec-Fetch-Dest" to "empty",
+                        "Sec-Fetch-Mode" to "cors",
+                        "Sec-Fetch-Site" to "same-origin"),
+                    data = mapOf("h" to femkey)
+                ).parsedSafe<Femcuevana>()
+                if (femrequest != null) {
+                    loadExtractor(femrequest.url, data, subtitleCallback, callback)
                 }
             }
-            if (iframe.contains("tomatomatela")) {
-                val tomatoRegex =
-                    Regex("(\\/\\/apialfa.tomatomatela.com\\/ir\\/player.php\\?h=[a-zA-Z0-9]{0,8}[a-zA-Z0-9_-]+)")
-                tomatoRegex.findAll(iframe).map { tomreg ->
-                    tomreg.value
-                }.toList().apmap { tom ->
-                    val tomkey = tom.replace("//apialfa.tomatomatela.com/ir/player.php?h=", "")
-                    app.post(
-                        "https://apialfa.tomatomatela.com/ir/rd.php", allowRedirects = false,
-                        headers = mapOf(
-                            "Host" to "apialfa.tomatomatela.com",
-                            "User-Agent" to USER_AGENT,
-                            "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-                            "Accept-Language" to "en-US,en;q=0.5",
-                            "Content-Type" to "application/x-www-form-urlencoded",
-                            "Origin" to "null",
-                            "DNT" to "1",
-                            "Connection" to "keep-alive",
-                            "Upgrade-Insecure-Requests" to "1",
-                            "Sec-Fetch-Dest" to "iframe",
-                            "Sec-Fetch-Mode" to "navigate",
-                            "Sec-Fetch-Site" to "same-origin",
-                        ),
-                        data = mapOf(Pair("url", tomkey))
-                    ).okhttpResponse.headers.values("location").apmap { loc ->
-                        if (loc.contains("goto_ddh.php")) {
-                            val gotoregex =
-                                Regex("(\\/\\/api.cuevana3.me\\/ir\\/goto_ddh.php\\?h=[a-zA-Z0-9]{0,8}[a-zA-Z0-9_-]+)")
-                            gotoregex.findAll(loc).map { goreg ->
-                                goreg.value.replace("//api.cuevana3.me/ir/goto_ddh.php?h=", "")
-                            }.toList().apmap { gotolink ->
-                                app.post(
-                                    "https://api.cuevana3.me/ir/redirect_ddh.php",
-                                    allowRedirects = false,
-                                    headers = mapOf(
-                                        "Host" to "api.cuevana3.me",
-                                        "User-Agent" to USER_AGENT,
-                                        "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-                                        "Accept-Language" to "en-US,en;q=0.5",
-                                        "Content-Type" to "application/x-www-form-urlencoded",
-                                        "Origin" to "null",
-                                        "DNT" to "1",
-                                        "Connection" to "keep-alive",
-                                        "Upgrade-Insecure-Requests" to "1",
-                                        "Sec-Fetch-Dest" to "iframe",
-                                        "Sec-Fetch-Mode" to "navigate",
-                                        "Sec-Fetch-Site" to "same-origin",
-                                    ),
-                                    data = mapOf(Pair("url", gotolink))
-                                ).okhttpResponse.headers.values("location").apmap { golink ->
-                                    loadExtractor(golink, data, subtitleCallback, callback)
-                                }
-                            }
-                        }
-                        if (loc.contains("index.php?h=")) {
-                            val indexRegex =
-                                Regex("(\\/\\/api.cuevana3.me\\/sc\\/index.php\\?h=[a-zA-Z0-9]{0,8}[a-zA-Z0-9_-]+)")
-                            indexRegex.findAll(loc).map { indreg ->
-                                indreg.value.replace("//api.cuevana3.me/sc/index.php?h=", "")
-                            }.toList().apmap { inlink ->
-                                app.post(
-                                    "https://api.cuevana3.me/sc/r.php", allowRedirects = false,
-                                    headers = mapOf(
-                                        "Host" to "api.cuevana3.me",
-                                        "User-Agent" to USER_AGENT,
-                                        "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-                                        "Accept-Language" to "en-US,en;q=0.5",
-                                        "Accept-Encoding" to "gzip, deflate, br",
-                                        "Content-Type" to "application/x-www-form-urlencoded",
-                                        "Origin" to "null",
-                                        "DNT" to "1",
-                                        "Connection" to "keep-alive",
-                                        "Upgrade-Insecure-Requests" to "1",
-                                        "Sec-Fetch-Dest" to "iframe",
-                                        "Sec-Fetch-Mode" to "navigate",
-                                        "Sec-Fetch-Site" to "same-origin",
-                                        "Sec-Fetch-User" to "?1",
-                                    ),
-                                    data = mapOf(Pair("h", inlink))
-                                ).okhttpResponse.headers.values("location").apmap { link ->
-                                    loadExtractor(link, data, subtitleCallback, callback)
-                                }
-                            }
-                        }
-                    }
+            if (iframe.contains(Regex("tomato.*goto_ddh.php"))) {
+                val tomatokey = iframe.substringAfter("goto_ddh.php?h=")
+                val linkpost = app.post("https://apialfa.tomatomatela.club/ir/redirect_ddh.php",
+                    allowRedirects = false,
+                    data = mapOf(
+                        "url" to tomatokey
+                    ),
+                    headers = mapOf(
+                        "User-Agent" to USER_AGENT,
+                        "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+                        "Accept-Language" to "en-US,en;q=0.5",
+                        "Content-Type" to "application/x-www-form-urlencoded",
+                        "DNT" to "1",
+                        "Connection" to "keep-alive",
+                        "Upgrade-Insecure-Requests" to "1",
+                        "Sec-Fetch-Dest" to "iframe",
+                        "Sec-Fetch-Mode" to "navigate",
+                        "Sec-Fetch-Site" to "same-origin",
+                        "TE" to "trailers",
+                    )
+                ).headers["location"]
+                if (linkpost != null){
+                    loadExtractor(linkpost, data, subtitleCallback, callback)
+                }
+
+            }
+
+            if (iframe.contains(Regex("tomato.*player.php"))) {
+                //They put a different servers here
+                val serverskey = iframe.substringAfter("player.php?h=")
+                val requestservers = app.post("https://apialfa.tomatomatela.club/ir/rd.php", allowRedirects = false,
+                    data = mapOf("url" to serverskey),
+                    headers = mapOf(
+                        "User-Agent" to USER_AGENT,
+                        "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+                        "Accept-Language" to "en-US,en;q=0.5",
+                        "Content-Type" to "application/x-www-form-urlencoded",
+                        "DNT" to "1",
+                        "Connection" to "keep-alive",
+                        "Upgrade-Insecure-Requests" to "1",
+                        "Sec-Fetch-Dest" to "iframe",
+                        "Sec-Fetch-Mode" to "navigate",
+                        "Sec-Fetch-Site" to "same-origin",
+                        "TE" to "trailers")
+                ).headers["location"]
+                if (requestservers != null){
+                    loadExtractor(requestservers, data, subtitleCallback, callback)
+                }
+            }
+            if (iframe.contains(Regex("tomato.*index.php"))) {
+                //More servers
+                val anotherkey = iframe.substringAfter("index.php?h=")
+                val anotherrequest = app.post("https://apialfa.tomatomatela.club/sc/r.php", allowRedirects = false,
+                    data = mapOf("h" to anotherkey),
+                    headers = mapOf(
+                        "User-Agent" to USER_AGENT,
+                        "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+                        "Accept-Language" to "en-US,en;q=0.5",
+                        "Content-Type" to "application/x-www-form-urlencoded",
+                        "DNT" to "1",
+                        "Connection" to "keep-alive",
+                        "Upgrade-Insecure-Requests" to "1",
+                        "Sec-Fetch-Dest" to "iframe",
+                        "Sec-Fetch-Mode" to "navigate",
+                        "Sec-Fetch-Site" to "same-origin",
+                        "Sec-Fetch-User" to "?1",
+                        "TE" to "trailers")
+                ).headers["location"]
+                if (anotherrequest != null){
+                    loadExtractor(anotherrequest, data, subtitleCallback, callback)
                 }
             }
         }
