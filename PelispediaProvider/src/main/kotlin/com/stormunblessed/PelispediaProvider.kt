@@ -92,7 +92,6 @@ class PelispediaProvider:MainAPI() {
                 val seasonregex = Regex("(temporada-\\d+-capitulo-\\d+)")
                 val seasonstring = seasonregex.find(href)?.destructured?.component1()
                     ?.replace("temporada-","")?.replace("-capitulo","") ?: ""
-                println("SEASONSTRING $seasonstring")
                 val seasonid = seasonstring.let { str ->
                     str.split("-").mapNotNull { subStr -> subStr.toIntOrNull() }
                 }
