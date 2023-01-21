@@ -108,7 +108,6 @@ class CuevanaProvider : MainAPI() {
         val poster: String? = soup.selectFirst(".movtv-info div.Image img")!!.attr("data-src")
         val backgrounposter = soup.selectFirst("html body.slider div#top-single.bd div.backdrop div.Image figure.Objf img.lazy")!!.attr("data-src")
             .replace("\\/\\/", "/")
-        println("TESTING $backgrounposter")
         val year1 = soup.selectFirst("footer p.meta").toString()
         val yearRegex = Regex("<span>(\\d+)</span>")
         val yearf =
@@ -160,7 +159,7 @@ class CuevanaProvider : MainAPI() {
                 newTvSeriesLoadResponse(title,
                     url, tvType, episodes,){
                     this.posterUrl = poster
-                    this.posterUrl = backgroundPosterUrl
+                    this.backgroundPosterUrl = backgrounposter
                     this.plot = description
                     this.year = year
                     this.tags = tags
@@ -171,7 +170,7 @@ class CuevanaProvider : MainAPI() {
                 newMovieLoadResponse(title, url, tvType, url){
                     this.posterUrl = poster
                     this.plot = description
-                    this.posterUrl = backgroundPosterUrl
+                    this.backgroundPosterUrl = backgrounposter
                     this.year = year
                     this.tags = tags
                     this.recommendations = recommendations
