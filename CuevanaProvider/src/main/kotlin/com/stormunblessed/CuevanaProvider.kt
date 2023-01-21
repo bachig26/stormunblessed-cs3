@@ -160,6 +160,7 @@ class CuevanaProvider : MainAPI() {
                 newTvSeriesLoadResponse(title,
                     url, tvType, episodes,){
                     this.posterUrl = poster
+                    this.posterUrl = backgroundPosterUrl
                     this.plot = description
                     this.year = year
                     this.tags = tags
@@ -170,6 +171,7 @@ class CuevanaProvider : MainAPI() {
                 newMovieLoadResponse(title, url, tvType, url){
                     this.posterUrl = poster
                     this.plot = description
+                    this.posterUrl = backgroundPosterUrl
                     this.year = year
                     this.tags = tags
                     this.recommendations = recommendations
