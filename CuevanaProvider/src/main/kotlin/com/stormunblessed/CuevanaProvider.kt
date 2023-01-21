@@ -106,6 +106,7 @@ class CuevanaProvider : MainAPI() {
         val title = soup.selectFirst("h1.Title")!!.text()
         val description = soup.selectFirst(".Description p")?.text()?.trim()
         val poster: String? = soup.selectFirst(".movtv-info div.Image img")!!.attr("data-src")
+            .replace(Regex("\\/p\\/w\\d+.*\\/"),"/p/original/")
         val backgrounposter = soup.selectFirst("html body.slider div#top-single.bd div.backdrop div.Image figure.Objf img.lazy")!!.attr("data-src")
             .replace("\\/\\/", "/")
         val year1 = soup.selectFirst("footer p.meta").toString()

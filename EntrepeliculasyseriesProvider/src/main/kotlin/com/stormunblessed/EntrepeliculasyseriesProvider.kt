@@ -87,9 +87,10 @@ class EntrepeliculasyseriesProvider : MainAPI() {
         val title = soup.selectFirst("h1.title-post")!!.text()
         val description = soup.selectFirst("p.text-content:nth-child(3)")?.text()?.trim()
         val poster: String? = soup.selectFirst("article.TPost img.lazy")!!.attr("data-src")
+        val backgroundposter = soup.selectFirst("html body div#Tp-Wp.Tp-Wp div.backdrop div.image figure.Objf img.lazy")!!.attr("data-src")
         val episodes = soup.select(".TPostMv article").map { li ->
             val href = (li.select("a") ?: li.select(".C a") ?: li.select("article a")).attr("href")
-            val epThumb = li.selectFirst("div.Image img")!!.attr("data-src")
+            val epThumb = li.selectFirst("div.Image img")!!.attr("data-src").replace(Regex("\\/w\\d+\\/"),"/w780/")
             val seasonid = li.selectFirst("span.Year")!!.text().let { str ->
                 str.split("x").mapNotNull { subStr -> subStr.toIntOrNull() }
             }
@@ -107,28 +108,19 @@ class EntrepeliculasyseriesProvider : MainAPI() {
         return when (val tvType =
             if (url.contains("/pelicula/")) TvType.Movie else TvType.TvSeries) {
             TvType.TvSeries -> {
-                TvSeriesLoadResponse(
-                    title,
-                    url,
-                    this.name,
-                    tvType,
-                    episodes,
-                    poster,
-                    null,
-                    description,
-                )
+                newTvSeriesLoadResponse(title,
+                    url, tvType, episodes,){
+                    this.posterUrl = poster
+                    this.backgroundPosterUrl = backgroundposter
+                    this.plot = description
+                }
             }
             TvType.Movie -> {
-                MovieLoadResponse(
-                    title,
-                    url,
-                    this.name,
-                    tvType,
-                    url,
-                    poster,
-                    null,
-                    description,
-                )
+                newMovieLoadResponse(title, url, tvType, url){
+                    this.posterUrl = poster
+                    this.backgroundPosterUrl = backgroundposter
+                    this.plot = description
+                }
             }
             else -> null
         }
@@ -143,33 +135,16 @@ class EntrepeliculasyseriesProvider : MainAPI() {
     ): Boolean {
         app.get(data).document.select(".video ul.dropdown-menu li").apmap {
             val servers = it.attr("data-link")
-            val doc = app.get(servers).document
-            doc.select("input").apmap {
-                val postkey = it.attr("value")
-                app.post(
-                    "https://entrepeliculasyseries.nz/r.php",
-                    headers = mapOf(
-                        "Host" to "entrepeliculasyseries.nz",
-                        "User-Agent" to USER_AGENT,
-                        "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-                        "Accept-Language" to "en-US,en;q=0.5",
-                        "Content-Type" to "application/x-www-form-urlencoded",
-                        "Origin" to "https://entrepeliculasyseries.nz",
-                        "DNT" to "1",
-                        "Connection" to "keep-alive",
-                        "Referer" to servers,
-                        "Upgrade-Insecure-Requests" to "1",
-                        "Sec-Fetch-Dest" to "document",
-                        "Sec-Fetch-Mode" to "navigate",
-                        "Sec-Fetch-Site" to "same-origin",
-                        "Sec-Fetch-User" to "?1",
-                    ),
-                    //params = mapOf(Pair("h", postkey)),
-                    data = mapOf(Pair("h", postkey)),
-                    allowRedirects = false
-                ).okhttpResponse.headers.values("location").apmap {
-                    loadExtractor(it, data, subtitleCallback, callback)
-                }
+            val keys = servers.substringAfter("player.php?h=")
+            val requestserrvers = app.post("https://entrepeliculasyseries.nz/r.php", allowRedirects = false,
+                headers = mapOf(),
+                data = mapOf(
+                    "h" to keys
+                )
+            ).headers["location"]
+            if (requestserrvers != null) {
+                println("LOCATION $requestserrvers")
+                loadExtractor(requestserrvers, data, subtitleCallback, callback)
             }
         }
         return true

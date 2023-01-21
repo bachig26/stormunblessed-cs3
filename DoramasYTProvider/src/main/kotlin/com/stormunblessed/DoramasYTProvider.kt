@@ -103,6 +103,9 @@ class DoramasYTProvider : MainAPI() {
     override suspend fun load(url: String): LoadResponse {
         val doc = app.get(url, timeout = 120).document
         val poster = doc.selectFirst("head meta[property=og:image]")!!.attr("content")
+        val backimagedoc = doc.selectFirst("html body div.herohead div.heroheadmain")!!.attr("style")
+        val backimageregex = Regex("url\\((.*)\\)")
+        val backimage = backimageregex.find(backimagedoc)?.destructured?.component1() ?: ""
         val title = doc.selectFirst("h1")!!.text()
         val type = doc.selectFirst("h4")!!.text()
         val description = doc.selectFirst("p.textComplete")!!.text().replace("Ver menos", "")
@@ -120,6 +123,7 @@ class DoramasYTProvider : MainAPI() {
         }
         return newAnimeLoadResponse(title, url, getType(type)) {
             posterUrl = poster
+            backgroundPosterUrl = backimage
             addEpisodes(DubStatus.Subbed, episodes)
             showStatus = status
             plot = description

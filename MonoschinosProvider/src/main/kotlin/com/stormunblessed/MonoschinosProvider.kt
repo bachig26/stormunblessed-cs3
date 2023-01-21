@@ -108,6 +108,7 @@ class MonoschinosProvider : MainAPI() {
     override suspend fun load(url: String): LoadResponse {
         val doc = app.get(url, timeout = 120).document
         val poster = doc.selectFirst(".chapterpic img")!!.attr("src")
+        val backimage = doc.selectFirst("div.heroarea div.heromain div.herobg img")!!.attr("src")
         val title = doc.selectFirst(".chapterdetails h1")!!.text()
         val type = doc.selectFirst("div.chapterdetls2")?.text() ?: ""
         val description = doc.selectFirst("p.textComplete")!!.text().replace("Ver menos", "")
@@ -125,6 +126,7 @@ class MonoschinosProvider : MainAPI() {
         }
         return newAnimeLoadResponse(title, url, getType(type)) {
             posterUrl = poster
+            backgroundPosterUrl = backimage
             addEpisodes(DubStatus.Subbed, episodes)
             showStatus = status
             plot = description
