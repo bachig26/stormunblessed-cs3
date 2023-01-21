@@ -54,12 +54,18 @@ class ElifilmsProvider : MainAPI() {
     override suspend fun search(query: String): List<SearchResponse> {
         val url = "$mainUrl/?s=$query"
         val doc = app.get(url).document
-        return doc.select("article.cf").map {
+        val search = ArrayList<MovieSearchResponse>()
+        doc.select("article.cf").map {
             val href = it.selectFirst("div.short_content a")?.attr("href") ?: ""
             val poster = it.selectFirst("a.ah-imagge img")?.attr("data-src")
+            val verified = !href.contains("disney") && !href.contains("hbo-max")
             val name = it.selectFirst(".short_header")?.text() ?: ""
-            (MovieSearchResponse(name, href, this.name, TvType.Movie, poster, null))
+            if (verified) {
+                search.add(
+                    (MovieSearchResponse(name, href, this.name, TvType.Movie, poster, null)))
+            }
         }
+        return search
     }
 
     override suspend fun load(url: String): LoadResponse {

@@ -1,11 +1,7 @@
 package com.lagradost.cloudstream3.movieproviders
 
-import com.fasterxml.jackson.annotation.JsonProperty
 import com.lagradost.cloudstream3.*
-import com.lagradost.cloudstream3.utils.AppUtils.parseJson
-import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
 import com.lagradost.cloudstream3.utils.ExtractorLink
-import com.lagradost.cloudstream3.utils.extractorApis
 import com.lagradost.cloudstream3.utils.loadExtractor
 
 class PelispediaProvider:MainAPI() {
@@ -22,186 +18,117 @@ class PelispediaProvider:MainAPI() {
         TvType.TvSeries,
     )
 
-    data class PelispediaHome (
-
-        @JsonProperty("post_id"    ) val postId    : Int?    = null,
-        @JsonProperty("post_title" ) val postTitle : String? = null,
-        @JsonProperty("post_name"  ) val postName  : String? = null,
-        @JsonProperty("post_image" ) val postImage : String? = null,
-        @JsonProperty("post_type"     ) val postType     : String? = null,
-
-        )
-
     override suspend fun getMainPage(page: Int, request : MainPageRequest): HomePageResponse {
         val items = ArrayList<HomePageList>()
         val urls = listOf(
-            Pair("Películas","$mainUrl/hcapi/homepage/movies/"),
-            Pair("Series","$mainUrl/hcapi/homepage/series/"),
+            Pair("Películas","$mainUrl/cartelera-peliculas/"),
+            Pair("Series","$mainUrl/cartelera-series/"),
         )
         urls.apmap { (name, url) ->
-            val json = app.get(url).text
-            val aaa = parseJson<List<PelispediaHome>>(json)
-            val home = aaa.map {
-                val title = it.postTitle
-                val image = it.postImage
-                val postlink = if (url.contains("movies")) "$mainUrl/hcapi/movie/${it.postId}" else "$mainUrl/hcapi/serie/${it.postId}"
+            val doc = app.get(url).document
+            val home =  doc.select("section.movies article").map {
+                val title = it.selectFirst("h2.entry-title")?.text() ?: ""
+                val img = it.selectFirst("img")!!.attr("data-src")
+                val link = it.selectFirst("a.lnk-blk")!!.attr("href")
                 TvSeriesSearchResponse(
-                    title!!,
-                    postlink,
-                    name,
-                    TvType.TvSeries,
-                    image,
+                    title,
+                    link,
+                    this.name,
+                    TvType.Movie,
+                    fixUrl(img),
                     null,
-                    null
+                    null,
                 )
             }
             items.add(HomePageList(name, home))
         }
+
         return HomePageResponse(items)
     }
 
     override suspend fun search(query: String): List<SearchResponse> {
-        val url = "$mainUrl/hcapi/search/$query/"
-        val text = app.get(url).text
-        val json = parseJson<List<PelispediaHome>>(text)
-        return json.map {
-            val title = it.postTitle
-            val image = it.postImage
-            val postlink = if (it.postType!!.contains("movies")) "$mainUrl/hcapi/movie/${it.postId}" else "$mainUrl/hcapi/serie/${it.postId}"
+        val url = "$mainUrl/?s=$query"
+        val doc = app.get(url).document
+        return doc.select("section.movies article").map {
+            val title = it.selectFirst("h2.entry-title")?.text() ?: ""
+            val img = it.selectFirst("img")!!.attr("src")
+            val link = it.selectFirst("a.lnk-blk")!!.attr("href")
             TvSeriesSearchResponse(
-                title!!,
-                postlink,
-                name,
-                TvType.TvSeries,
-                image,
+                title,
+                link,
+                this.name,
+                TvType.Movie,
+                fixUrl(img),
                 null,
-                null
+                null,
             )
-        } }
-
-    data class PelispediaMetadata (
-        @JsonProperty("Movie"       ) val movie       : TestMetadata?                 = TestMetadata(),
-        @JsonProperty("Serie"       ) val serie       : TestMetadata?                 = TestMetadata(),
-
-        )
-
-    data class MovieStreams (
-        @JsonProperty("type"    ) val type    : Int?    = null,
-        @JsonProperty("server"  ) val server  : Int?    = null,
-        @JsonProperty("lang"    ) val lang    : String? = null,
-        @JsonProperty("quality" ) val quality : Int?    = null,
-        @JsonProperty("link"    ) val link    : String? = null
-    )
-
-
-    data class SerieTemps (
-        @JsonProperty("temp_num"    ) val tempNum    : Int?    = null,
-        @JsonProperty("temp_name"   ) val tempName   : String? = null,
-        @JsonProperty("temp_poster" ) val tempPoster : String? = null
-    )
-
-    data class TestMetadata (
-        @JsonProperty("movie_name"       ) val movieName       : String?                 = null,
-        @JsonProperty("movie_content"    ) val movieContent    : String?                 = null,
-        @JsonProperty("movie_release"    ) val movieRelease    : String?                 = null,
-        @JsonProperty("movie_backdrop"   ) val movieBackdrop   : String?                 = null,
-        @JsonProperty("movie_poster"     ) val moviePoster     : String?                 = null,
-        @JsonProperty("movie_trailer"    ) val movieTrailer    : String?                 = null,
-        @JsonProperty("movie_duration"   ) val movieDuration   : String?                 = null,
-        @JsonProperty("movie_categories" ) val movieCategories : String?                 = null,
-        @JsonProperty("movie_streams"    ) val movieStreams    : ArrayList<MovieStreams> = arrayListOf(),
-        @JsonProperty("serie_id"         ) val serieId         : Int?                  = null,
-        @JsonProperty("serie_name"       ) val serieName       : String?               = null,
-        @JsonProperty("serie_content"    ) val serieContent    : String?               = null,
-        @JsonProperty("serie_backdrop"   ) val serieBackdrop   : String?               = null,
-        @JsonProperty("serie_poster"     ) val seriePoster     : String?               = null,
-        @JsonProperty("serie_categories" ) val serieCategories : String?               = null,
-        @JsonProperty("serie_temps"      ) val serieTemps      : ArrayList<SerieTemps> = arrayListOf()
-    )
-
-
-
-    data class EpisodesMetadata (
-        @JsonProperty("episode_id"       ) val episodeId       : Int?    = null,
-        @JsonProperty("episode_number"   ) val episodeNumber   : Int?    = null,
-        @JsonProperty("episode_poster"   ) val episodePoster   : String? = null,
-        @JsonProperty("episode_name"     ) val episodeName     : String? = null,
-        @JsonProperty("episode_overview" ) val episodeOverview : String? = null
-    )
+        }
+    }
 
     override suspend fun load(url: String): LoadResponse? {
-        val text = app.get(url).text
-        val tvType = if (url.contains("movie")) TvType.Movie else TvType.TvSeries
-        val isMovie = tvType == TvType.Movie
-        val jsonfix = if (url.contains("movie")) "{\"Movie\":$text}" else "{\"Serie\":$text}"
-        val json = tryParseJson<PelispediaMetadata>(jsonfix) ?: throw ErrorLoadingException("Intenta de nuevo")
-        val metadata: TestMetadata? = if (isMovie) json.movie else json.serie
-        val title = metadata?.movieName ?: metadata?.serieName
-        val description = metadata?.movieContent ?: metadata?.serieContent
-        val poster = metadata?.moviePoster ?: metadata?.seriePoster
-        val realposter = "https://image.tmdb.org/t/p/w1280/$poster"
-        val tags = metadata?.movieCategories ?: metadata?.serieCategories
-        val realtags = tags?.split(",")
-        val episodes = ArrayList<Episode>()
-        if (!isMovie) {
-            val seasonlinks = metadata?.serieTemps?.map { temp -> "$url/temp/${temp.tempNum}" }?.reversed()
-            seasonlinks?.apmap { seasonlink ->
-                val textseason = app.get(seasonlink).text
-                val jsonseasons = parseJson<List<EpisodesMetadata>>(textseason)
-                val season = seasonlink.substringAfter("/temp/").toIntOrNull()
-                jsonseasons.map { epdata ->
-                    val epnum = epdata.episodeNumber
-                    val eplink = "$mainUrl/hcapi/serie/cap/${epdata.episodeId}"
-                    val epposter = "https://image.tmdb.org/t/p/w500/${epdata.episodePoster}"
-                    val epname = epdata.episodeName
-                    val epdesc = epdata.episodeOverview
-                    episodes.add(Episode(
-                        eplink,
-                        epname,
-                        season,
-                        epnum,
-                        posterUrl = epposter,
-                        description = epdesc
-                    ))
+        val doc = app.get(url).document
+        val tvType = if (url.contains("pelicula")) TvType.Movie else TvType.TvSeries
+        val poster = doc.selectFirst(".alg-ss img")!!.attr("data-src").replace(Regex("\\/p\\/w\\d+.*\\/"),"/p/original/")
+        val backimage = doc.selectFirst(".bghd  img")!!.attr("data-src")
+        val title = doc.selectFirst("h1.entry-title")!!.text()
+        val plot = doc.selectFirst(".description > p")!!.text()
+        val tags = doc.select("span.genres a").map { it.text() }
+        val seasonsdoc = doc.select("div.choose-season li a").map {
+            val seriesid = it.attr("data-post")
+            val dataseason = it.attr("data-season")
+            Pair(seriesid, dataseason)
+        }
+        val epi = ArrayList<Episode>()
+        seasonsdoc.apmap {(serieid, data) ->
+            val seasonsrequest = app.post("https://pelispedia.is/wp-admin/admin-ajax.php",
+                data = mapOf(
+                    "action" to "action_select_season",
+                    "season" to data,
+                    "post" to serieid,
+                )
+            ).document
+            seasonsrequest.select("li article.episodes").map { li ->
+                val href = li.selectFirst("a.lnk-blk")!!.attr("href")
+                val seasonregex = Regex("(temporada-\\d+-capitulo-\\d+)")
+                val seasonstring = seasonregex.find(href)?.destructured?.component1()
+                    ?.replace("temporada-","")?.replace("-capitulo","") ?: ""
+                println("SEASONSTRING $seasonstring")
+                val seasonid = seasonstring.let { str ->
+                    str.split("-").mapNotNull { subStr -> subStr.toIntOrNull() }
                 }
+                val isValid = seasonid.size == 2
+                val episode = if (isValid) seasonid.getOrNull(1) else null
+                val season = if (isValid) seasonid.getOrNull(0) else null
+                epi.add(Episode(
+                    href,
+                    null,
+                    season,
+                    episode,
+                ))
             }
         }
-
-        return when (tvType){
+        return when (tvType) {
             TvType.TvSeries -> {
-                newTvSeriesLoadResponse(title!!, url, tvType, episodes,) {
-                    this.plot = description
-                    this.posterUrl = realposter
-                    this.tags = realtags
+                newTvSeriesLoadResponse(title,
+                    url, tvType, epi,){
+                    this.posterUrl = fixUrl(poster)
+                    this.backgroundPosterUrl = fixUrl(backimage)
+                    this.plot = plot
+                    this.tags = tags
                 }
             }
             TvType.Movie -> {
-                newMovieLoadResponse(title!!, url, tvType, metadata?.movieStreams,) {
-                    this.plot = description
-                    this.posterUrl = realposter
-                    this.tags = realtags
-                    this.year = metadata?.movieRelease?.toIntOrNull()
+                newMovieLoadResponse(title, url, tvType, url){
+                    this.posterUrl = fixUrl(poster)
+                    this.backgroundPosterUrl = fixUrl(backimage)
+                    this.plot = plot
+                    this.tags = tags
                 }
             }
             else -> null
         }
-
     }
 
-    /*   private fun getStream(MovieStream: List<MovieStreams>,
-                          callback: (ExtractorLink) -> Unit,
-                          subtitleCallback: (SubtitleFile) -> Unit
-    ): List<Unit> = MovieStream.apmap {
-        for (extractor in extractorApis) {
-            val reallang = it.lang?.replace("VOSE", "Subtitulado")
-            if (it.link!!.startsWith(extractor.mainUrl)) {
-                extractor.getSafeUrl2(it.link)?.forEach {
-                    it.name += " $reallang"
-                    callback(it)
-                }
-            }
-        }
-    } */
 
     override suspend fun loadLinks(
         data: String,
@@ -209,21 +136,11 @@ class PelispediaProvider:MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        val tvType = if (data.contains("serie")) TvType.TvSeries else TvType.Movie
-        val isMovie = tvType == TvType.Movie
-        if (isMovie) {
-            val jsonmovie = parseJson<List<MovieStreams>>(data)
-            jsonmovie.map {
-                loadExtractor(it.link!!, mainUrl, subtitleCallback, callback)
-            }
-           // loadExtractor(jsonmovie, mainUrl, subtitleCallback, callback)
-        } else {
-            val response = app.get(data).text
-            val jsonserie = parseJson<List<MovieStreams>>(response)
-            jsonserie.map {
-                loadExtractor(it.link!!, mainUrl, subtitleCallback, callback)
-            }
-            //getStream(jsonserie, callback, subtitleCallback)
+        app.get(data).document.select(".player iframe").apmap {
+            val trembedlink = it.attr("data-src")
+            val tremrequest = app.get(trembedlink).document
+            val link = tremrequest.selectFirst("div.Video iframe")!!.attr("src")
+            loadExtractor(link, data, subtitleCallback, callback)
         }
         return true
     }
