@@ -3,7 +3,7 @@ package com.stormunblessed
 import com.lagradost.cloudstream3.plugins.CloudstreamPlugin
 import com.lagradost.cloudstream3.plugins.Plugin
 import android.content.Context
-import com.lagradost.cloudstream3.movieproviders.PelispediaProvider
+import com.lagradost.cloudstream3.movieproviders.Pelisplus4KProvider
 
 @CloudstreamPlugin
 class Pelisplus4KProviderPlugin: Plugin() {
