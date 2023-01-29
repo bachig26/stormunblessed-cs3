@@ -215,8 +215,7 @@ class JKAnimeProvider : MainAPI() {
         app.get(data).document.select("script").apmap { script ->
             if (script.data().contains("var video = []")) {
                 val videos = script.data().replace("\\/", "/")
-                val aaa = fetchjkanime(videos).map { it }.toList()
-                println("AAS $aaa")
+                fetchjkanime(videos).map { it }.toList()
                 fetchjkanime(videos).map {
                     it.replace("$mainUrl/jkfembed.php?u=", "https://embedsito.com/v/")
                         .replace("$mainUrl/jkokru.php?u=", "http://ok.ru/videoembed/")
@@ -228,105 +227,110 @@ class JKAnimeProvider : MainAPI() {
                         .replace("/jk.php?u=", "$mainUrl/")
                         .replace("/um2.php?","$mainUrl/um2.php?")
                         .replace("/um.php?","$mainUrl/um.php?")
+                        .replace("=\"player_conte\" src=", "")
                 }.apmap { link ->
-                    loadExtractor(link, data, subtitleCallback, callback)
-                    if (link.contains("um2.php")) {
-                        val doc = app.get(link, referer = data).document
-                        val gsplaykey = doc.select("form input[value]").attr("value")
-                        app.post(
-                            "$mainUrl/gsplay/redirect_post.php",
-                            headers = mapOf(
-                                "Host" to "jkanime.net",
-                                "User-Agent" to USER_AGENT,
-                                "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-                                "Accept-Language" to "en-US,en;q=0.5",
-                                "Referer" to link,
-                                "Content-Type" to "application/x-www-form-urlencoded",
-                                "Origin" to "https://jkanime.net",
-                                "DNT" to "1",
-                                "Connection" to "keep-alive",
-                                "Upgrade-Insecure-Requests" to "1",
-                                "Sec-Fetch-Dest" to "iframe",
-                                "Sec-Fetch-Mode" to "navigate",
-                                "Sec-Fetch-Site" to "same-origin",
-                                "TE" to "trailers",
-                                "Pragma" to "no-cache",
-                                "Cache-Control" to "no-cache",
-                            ),
-                            data = mapOf(Pair("data", gsplaykey)),
-                            allowRedirects = false
-                        ).okhttpResponse.headers.values("location").apmap { loc ->
-                            val postkey = loc.replace("/gsplay/player.html#", "")
-                            val nozomitext = app.post(
-                                "$mainUrl/gsplay/api.php",
+                    fetchUrls(link).forEach {links ->
+                        loadExtractor(links, data, subtitleCallback, callback)
+                        if (links.contains("um2.php")) {
+                            val doc = app.get(links, referer = data).document
+                            val gsplaykey = doc.select("form input[value]").attr("value")
+                            app.post(
+                                "$mainUrl/gsplay/redirect_post.php",
                                 headers = mapOf(
                                     "Host" to "jkanime.net",
                                     "User-Agent" to USER_AGENT,
-                                    "Accept" to "application/json, text/javascript, */*; q=0.01",
+                                    "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
                                     "Accept-Language" to "en-US,en;q=0.5",
-                                    "Content-Type" to "application/x-www-form-urlencoded; charset=UTF-8",
-                                    "X-Requested-With" to "XMLHttpRequest",
+                                    "Referer" to link,
+                                    "Content-Type" to "application/x-www-form-urlencoded",
                                     "Origin" to "https://jkanime.net",
                                     "DNT" to "1",
                                     "Connection" to "keep-alive",
-                                    "Sec-Fetch-Dest" to "empty",
-                                    "Sec-Fetch-Mode" to "cors",
+                                    "Upgrade-Insecure-Requests" to "1",
+                                    "Sec-Fetch-Dest" to "iframe",
+                                    "Sec-Fetch-Mode" to "navigate",
                                     "Sec-Fetch-Site" to "same-origin",
+                                    "TE" to "trailers",
+                                    "Pragma" to "no-cache",
+                                    "Cache-Control" to "no-cache",
                                 ),
-                                data = mapOf(Pair("v", postkey)),
+                                data = mapOf(Pair("data", gsplaykey)),
                                 allowRedirects = false
-                            ).text
-                            val json = parseJson<Nozomi>(nozomitext)
-                            val nozomiurl = listOf(json.file)
-                            if (nozomiurl.isEmpty()) null else
-                                nozomiurl.forEach { url ->
-                                    val nozominame = "Nozomi"
-                                    streamClean(
-                                        nozominame,
-                                        url!!,
-                                        "",
-                                        null,
-                                        callback,
-                                        url.contains(".m3u8")
-                                    )
-                                }
+                            ).okhttpResponse.headers.values("location").apmap { loc ->
+                                val postkey = loc.replace("/gsplay/player.html#", "")
+                                val nozomitext = app.post(
+                                    "$mainUrl/gsplay/api.php",
+                                    headers = mapOf(
+                                        "Host" to "jkanime.net",
+                                        "User-Agent" to USER_AGENT,
+                                        "Accept" to "application/json, text/javascript, */*; q=0.01",
+                                        "Accept-Language" to "en-US,en;q=0.5",
+                                        "Content-Type" to "application/x-www-form-urlencoded; charset=UTF-8",
+                                        "X-Requested-With" to "XMLHttpRequest",
+                                        "Origin" to "https://jkanime.net",
+                                        "DNT" to "1",
+                                        "Connection" to "keep-alive",
+                                        "Sec-Fetch-Dest" to "empty",
+                                        "Sec-Fetch-Mode" to "cors",
+                                        "Sec-Fetch-Site" to "same-origin",
+                                    ),
+                                    data = mapOf(Pair("v", postkey)),
+                                    allowRedirects = false
+                                ).text
+                                val json = parseJson<Nozomi>(nozomitext)
+                                val nozomiurl = listOf(json.file)
+                                if (nozomiurl.isEmpty()) null else
+                                    nozomiurl.forEach { url ->
+                                        val nozominame = "Nozomi"
+                                        if (url != null) {
+                                            streamClean(
+                                                nozominame,
+                                                url,
+                                                "",
+                                                null,
+                                                callback,
+                                                url.contains(".m3u8")
+                                            )
+                                        }
+                                    }
+                            }
                         }
-                    }
-                    if (link.contains("um.php")) {
-                        val desutext = app.get(link, referer = data).text
-                        val desuRegex = Regex("((https:|http:)//.*\\.m3u8)")
-                        val file = desuRegex.find(desutext)?.value
-                        val namedesu = "Desu"
-                        generateM3u8(
-                            namedesu,
-                            file!!,
-                            mainUrl,
-                        ).forEach { desurl ->
-                            streamClean(
+                        if (links.contains("um.php")) {
+                            val desutext = app.get(links, referer = data).text
+                            val desuRegex = Regex("((https:|http:)//.*\\.m3u8)")
+                            val file = desuRegex.find(desutext)?.value
+                            val namedesu = "Desu"
+                            generateM3u8(
                                 namedesu,
-                                desurl.url,
+                                file!!,
                                 mainUrl,
-                                desurl.quality.toString(),
-                                callback,
-                                true
-                            )
+                            ).forEach { desurl ->
+                                streamClean(
+                                    namedesu,
+                                    desurl.url,
+                                    mainUrl,
+                                    desurl.quality.toString(),
+                                    callback,
+                                    true
+                                )
+                            }
                         }
-                    }
-                    if (link.contains("jkmedia")) {
-                        app.get(
-                            link,
-                            referer = data,
-                            allowRedirects = false
-                        ).okhttpResponse.headers.values("location").apmap { xtremeurl ->
-                            val namex = "Xtreme S"
-                            streamClean(
-                                namex,
-                                xtremeurl,
-                                "",
-                                null,
-                                callback,
-                                xtremeurl.contains(".m3u8")
-                            )
+                        if (links.contains("jkmedia")) {
+                            app.get(
+                                links,
+                                referer = data,
+                                allowRedirects = false
+                            ).okhttpResponse.headers.values("location").apmap { xtremeurl ->
+                                val namex = "Xtreme S"
+                                streamClean(
+                                    namex,
+                                    xtremeurl,
+                                    "",
+                                    null,
+                                    callback,
+                                    xtremeurl.contains(".m3u8")
+                                )
+                            }
                         }
                     }
                 }
