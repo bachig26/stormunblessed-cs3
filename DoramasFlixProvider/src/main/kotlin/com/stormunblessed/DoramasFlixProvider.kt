@@ -240,7 +240,7 @@ class DoramasFlixProvider:MainAPI() {
         return when (tvType) {
             TvType.AsianDrama -> {
                 newTvSeriesLoadResponse(title!!,
-                    mainUrl, tvType, episodes,){
+                    url, tvType, episodes,){
                     this.posterUrl = poster
                     this.backgroundPosterUrl = bgposter
                     this.plot = plot
