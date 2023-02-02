@@ -87,7 +87,7 @@ class EntrepeliculasyseriesProvider : MainAPI() {
         val title = soup.selectFirst("h1.title-post")!!.text()
         val description = soup.selectFirst("p.text-content:nth-child(3)")?.text()?.trim()
         val poster: String? = soup.selectFirst("article.TPost img.lazy")!!.attr("data-src")
-        val backgroundposter = soup.selectFirst("html body div#Tp-Wp.Tp-Wp div.backdrop div.image figure.Objf img.lazy")!!.attr("data-src")
+        val backgroundposter = soup.selectFirst("div.image figure.Objf img.lazy")!!.attr("data-src")
         val episodes = soup.select(".TPostMv article").map { li ->
             val href = (li.select("a") ?: li.select(".C a") ?: li.select("article a")).attr("href")
             val epThumb = li.selectFirst("div.Image img")!!.attr("data-src").replace(Regex("\\/w\\d+\\/"),"/w780/")
