@@ -209,6 +209,7 @@ class DoramasFlixProvider:MainAPI() {
         val tags2 = metaInfo?.labels?.map { tags.add(it.name!!) }
         val episodes = ArrayList<Episode>()
         var movieData: String? = ""
+        val datatwo = "{\"id\":\"${parse.id}\",\"slug\":\"${parse.slug}\",\"type\":\"${parse.type}\",\"isTV\":${parse.isTV}}"
 
         if (!isMovie) {
             val listSeasonsbody = "{\"operationName\":\"listSeasons\",\"variables\":{\"serie_id\":\"$id\"},\"query\":\"query listSeasons(\$serie_id: MongoID!) {\\n  listSeasons(sort: NUMBER_ASC, filter: {serie_id: \$serie_id}) {\\n    slug\\n    season_number\\n    poster_path\\n    air_date\\n    serie_name\\n    poster\\n    backdrop\\n    __typename\\n  }\\n}\\n\"}"
@@ -240,7 +241,7 @@ class DoramasFlixProvider:MainAPI() {
         return when (tvType) {
             TvType.AsianDrama -> {
                 newTvSeriesLoadResponse(title!!,
-                    url, tvType, episodes,){
+                    datatwo, tvType, episodes,){
                     this.posterUrl = poster
                     this.backgroundPosterUrl = bgposter
                     this.plot = plot
@@ -248,7 +249,7 @@ class DoramasFlixProvider:MainAPI() {
                 }
             }
             TvType.Movie -> {
-                newMovieLoadResponse(title!!, mainUrl, tvType, movieData){
+                newMovieLoadResponse(title!!, datatwo, tvType, movieData){
                     this.posterUrl = poster
                     this.plot = plot
                     this.backgroundPosterUrl = bgposter
