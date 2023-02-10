@@ -176,12 +176,14 @@ class PelisplusHDProvider:MainAPI() {
                             val linkdecoded = base64Decode(linkencoded)
                                 .replace(Regex("https://owodeuwu.xyz|https://sypl.xyz"),"https://embedsito.com")
                                 .replace(Regex(".poster.*"),"")
-                            println("LINK DECODED $linkdecoded")
-                            val secondlink = it.attr("onclick")
-                                .replace(Regex("https://owodeuwu.xyz|https://sypl.xyz"),"https://embedsito.com")
-                                .replace(Regex(".poster.*|.cover.*"),"").replace(Regex("go_to_player\\('|'\\)"),"")
+                            val secondlink = it.attr("onclick").substringAfter("go_to_player('").substringBefore("',")
                             loadExtractor(linkdecoded, link,subtitleCallback, callback)
-                            loadExtractor(secondlink, link, subtitleCallback, callback)
+                            val restwo = app.get("https://api.mycdn.moe/player/?id=$secondlink", allowRedirects = false).document
+                            val thirdlink = restwo.selectFirst("body > iframe")?.attr("src")
+                                ?.replace(Regex("https://owodeuwu.xyz|https://sypl.xyz"),"https://embedsito.com")
+                                ?.replace(Regex(".poster.*"),"")
+                            loadExtractor(thirdlink!!, link, subtitleCallback, callback)
+
                         }
                     }
                     loadExtractor(link, data, subtitleCallback, callback)
