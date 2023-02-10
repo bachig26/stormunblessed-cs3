@@ -39,11 +39,11 @@ class JKAnimeProvider : MainAPI() {
                 "En emisión"
             ),
             Pair(
-                "$mainUrl/directorio/?filtro=fecha&tipo=none&estado=none&fecha=none&temporada=none&orden=none",
+                "$mainUrl/directorio/animes/",
                 "Animes"
             ),
             Pair(
-                "$mainUrl/directorio/?filtro=fecha&tipo=Movie&estado=none&fecha=none&temporada=none&orden=none",
+                "$mainUrl/directorio/peliculas/",
                 "Películas"
             ),
         )
@@ -154,6 +154,7 @@ class JKAnimeProvider : MainAPI() {
             .map { it.text() }
         val status = when (doc.selectFirst("span.enemision")?.text()) {
             "En emisión" -> ShowStatus.Ongoing
+            "En emision" -> ShowStatus.Ongoing
             "Concluido" -> ShowStatus.Completed
             else -> null
         }
