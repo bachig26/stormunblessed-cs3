@@ -139,11 +139,16 @@ class JKAnimeProvider : MainAPI() {
         }
     }
 
+
+    data class EpsInfo (
+        @JsonProperty("number" ) var number : String? = null,
+        @JsonProperty("title"  ) var title  : String? = null,
+        @JsonProperty("image"  ) var image  : String? = null
+    )
     override suspend fun load(url: String): LoadResponse {
         val doc = app.get(url, timeout = 120).document
         val poster = doc.selectFirst(".set-bg")?.attr("data-setbg")
         val title = doc.selectFirst(".anime__details__title > h3")?.text()
-        val type = doc.selectFirst(".anime__details__text")?.text()
         val description = doc.selectFirst(".anime__details__text > p")?.text()
         val genres = doc.select("div.col-lg-6:nth-child(1) > ul:nth-child(1) > li:nth-child(2) > a")
             .map { it.text() }
@@ -152,14 +157,23 @@ class JKAnimeProvider : MainAPI() {
             "Concluido" -> ShowStatus.Completed
             else -> null
         }
+        val type = doc.selectFirst("div.col-lg-6.col-md-6 ul li[rel=tipo]")?.text()
         val animeID = doc.selectFirst("div.ml-2")?.attr("data-anime")?.toInt()
-        val animeeps = "$mainUrl/ajax/last_episode/$animeID/"
-        val jsoneps = app.get(animeeps).text
-        val lastepnum =
-            jsoneps.substringAfter("{\"number\":\"").substringBefore("\",\"title\"").toInt()
-        val episodes = (1..lastepnum).map {
-            val link = "${url.removeSuffix("/")}/$it"
-            Episode(link)
+        val episodes = ArrayList<Episode>()
+        val pags = doc.select("a.numbers").map { it.attr("href").substringAfter("#pag") }
+        pags.apmap { pagnum ->
+            val res = app.get("$mainUrl/ajax/pagination_episodes/$animeID/$pagnum/").text
+            val json = parseJson<ArrayList<EpsInfo>>(res)
+            json.apmap { info ->
+                val imagetest = !info.image.isNullOrBlank()
+                val image = if (imagetest) "https://cdn.jkdesu.com/assets/images/animes/video/image_thumb/${info.image}" else null
+                val link = "${url.removeSuffix("/")}/${info.number}"
+                val ep = Episode(
+                    link,
+                    posterUrl = image
+                )
+                episodes.add(ep)
+            }
         }
 
         return newAnimeLoadResponse(title!!, url, getType(type!!)) {
