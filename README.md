@@ -1,7 +1,10 @@
 # `Stormunblesssed Repository`
 Spanish and English providers
 
-If you want to use Kamyroll [here](https://github.com/Stormunblessed/kamy-cs3) 
+To install click [here](https://l.cloudstream.cf/dir_storm)
+
+
+If you want to use Kronch [here](https://github.com/Stormunblessed/kamy-cs3) 
 
 Plugin json: https://raw.githubusercontent.com/Stormunblessed/stormunblessed-cs3/builds/plugins.json
 ## Attribution
