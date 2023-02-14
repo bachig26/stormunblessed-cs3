@@ -2,13 +2,13 @@ package com.stormunblessed
 
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.lagradost.cloudstream3.*
-import com.lagradost.cloudstream3.extractors.helper.JsVrfInterceptor
+import com.stormunblessed.JsVrfInterceptor
 import com.lagradost.cloudstream3.utils.*
 import com.lagradost.cloudstream3.utils.AppUtils.parseJson
 import okhttp3.OkHttpClient
 import org.jsoup.Jsoup
 import com.lagradost.cloudstream3.utils.M3u8Helper.Companion.generateM3u8
-
+import com.stormunblessed.JsInterceptor
 
 class NineAnimeProvider : MainAPI() {
     override var mainUrl = "https://9anime.id"

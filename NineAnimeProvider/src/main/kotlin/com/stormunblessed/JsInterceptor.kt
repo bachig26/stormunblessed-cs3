@@ -13,9 +13,10 @@ import android.widget.Toast
 import com.lagradost.cloudstream3.AcraApplication.Companion.context
 import okhttp3.*
 import java.util.concurrent.CountDownLatch
+import com.stormunblessed.JsGET
 
-
-
+// This was extracted from https://github.com/jmir1/aniyomi-extensions/blob/master/src/en/nineanime/src/eu/kanade/tachiyomi/animeextension/en/nineanime/JsInterceptor.kt
+// The following code is under the Apache License 2.0 https://github.com/jmir1/aniyomi-extensions/blob/master/LICENSE
 class JsInterceptor(private val lang: String) : Interceptor {
 
     private val handler by lazy { Handler(Looper.getMainLooper()) }

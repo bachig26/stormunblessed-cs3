@@ -1,4 +1,4 @@
-package com.lagradost.cloudstream3.extractors.helper
+package com.stormunblessed
 
 import android.annotation.SuppressLint
 import android.os.Handler
@@ -10,6 +10,8 @@ import com.lagradost.cloudstream3.AcraApplication.Companion.context
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
+//The following code is extracted from here https://github.com/jmir1/aniyomi-extensions/blob/master/src/en/nineanime/src/eu/kanade/tachiyomi/animeextension/en/nineanime/JsVrfInterceptor.kt
+// The following code is under the Apache License 2.0 https://github.com/jmir1/aniyomi-extensions/blob/master/LICENSE
 class JsVrfInterceptor(private val baseUrl: String) {
 
     private val handler by lazy { Handler(Looper.getMainLooper()) }
