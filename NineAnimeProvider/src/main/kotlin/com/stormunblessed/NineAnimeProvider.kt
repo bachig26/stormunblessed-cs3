@@ -61,7 +61,7 @@ class NineAnimeProvider : MainAPI() {
             ).parsed<Response>().html!!
         ).select("div.item").mapNotNull { element ->
             val title = element.selectFirst(".info > .name") ?: return@mapNotNull null
-            val link = title.attr("href")
+            val link = title.attr("href").replace(Regex("\\/ep.*\$"),"")
             val poster = element.selectFirst(".poster > a > img")?.attr("src")
             val meta = element.selectFirst(".poster > a > .meta > .inner > .left")
             val subbedEpisodes = meta?.selectFirst(".sub")?.text()?.toIntOrNull()
@@ -242,19 +242,20 @@ class NineAnimeProvider : MainAPI() {
     private suspend fun getStream(
         streamLink: String,
         name: String,
+        referer: String,
         callback: (ExtractorLink) -> Unit
     )  {
         return generateM3u8(
             this.name,
             streamLink,
-            ""
+            referer
         ).forEach { sub ->
             callback(
                 ExtractorLink(
                     this.name,
                     name,
                     sub.url,
-                    "",
+                    referer,
                     getQualityFromName(sub.quality.toString()),
                     true
                 )
@@ -264,12 +265,18 @@ class NineAnimeProvider : MainAPI() {
 
 
     private suspend fun getM3U8(epurl: String, lang: String, callback: (ExtractorLink) -> Unit):Boolean{
-        val req = app.get(epurl, interceptor = JsInterceptor(lang))
         val isdub = lang == "dub"
-        val masterurl = req.url
-        if (masterurl.contains("m3u8")) {
-            val name = if (isdub) "9anime Dubbed" else "9anime Subbed"
-            getStream(masterurl, name, callback)
+        val vidstream = app.get(epurl, interceptor = JsInterceptor("41", lang), timeout = 45)
+        val vidurl = vidstream.url
+        val mcloud = app.get(epurl, interceptor = JsInterceptor("28", lang), timeout = 45)
+        val murl = mcloud.url
+        val ll = listOf(vidurl, murl)
+        ll.apmap {link ->
+            val vv = link.contains("mcloud")
+            val name1 = if (vv) "Mcloud" else "Vidstream"
+            val ref = if (vv) "https://mcloud.to/" else ""
+            val name2 = if (isdub) "$name1 Dubbed" else "$name1 Subbed"
+            getStream(link, name2, ref ,callback)
         }
         return true
     }
@@ -283,12 +290,13 @@ class NineAnimeProvider : MainAPI() {
         val parsedata = parseJson<EpsInfo>(data)
         val isdub = parsedata.isdubbed == true
         val issub = parsedata.issubbed == true
-        if (isdub){
-            getM3U8(parsedata.epurl!!,"dub",callback)
-        }
         if (issub){
             getM3U8(parsedata.epurl!!,"sub",callback)
         }
+        if (isdub){
+            getM3U8(parsedata.epurl!!,"dub",callback)
+        }
+
         return true
     }
 }

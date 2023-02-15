@@ -95,8 +95,8 @@ open class BflixProvider : MainAPI() {
 
         private fun decrypt(input: String, key: String): String {
             val t = if (input.replace("""[\t\n\f\r]""".toRegex(), "").length % 4 == 0) {
-                input.replace("""==?$""".toRegex(), "")
-            } else input
+                input.replace("""==?$""".toRegex(), "").replace("%2F","/")
+            } else input.replace("%2F","/")
             if (t.length % 4 == 1 || t.contains("""[^+/0-9A-Za-z]""".toRegex())) throw Exception("bad input")
             var i: Int
             var r = ""

@@ -11,11 +11,10 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
 import com.lagradost.cloudstream3.AcraApplication.Companion.context
+import com.lagradost.cloudstream3.utils.Coroutines
+import com.lagradost.cloudstream3.utils.Coroutines.main
 import okhttp3.*
 import java.util.concurrent.CountDownLatch
-
-
-
 class JsInterceptor(private val serverid: String) : Interceptor {
 
     private val handler by lazy { Handler(Looper.getMainLooper()) }
@@ -42,7 +41,6 @@ class JsInterceptor(private val serverid: String) : Interceptor {
 
     @SuppressLint("SetJavaScriptEnabled")
     private fun resolveWithWebView(request: Request): Request? {
-
         val latch = CountDownLatch(1)
 
         var webView: WebView? = null
@@ -50,6 +48,16 @@ class JsInterceptor(private val serverid: String) : Interceptor {
         val origRequestUrl = request.url.toString()
 
         val jsinterface = JsObject()
+
+        fun destroyWebView() {
+            Coroutines.main {
+                webView?.stopLoading()
+                webView?.destroy()
+                webView = null
+                println("Destroyed webview")
+            }
+        }
+
 
         // JavaSrcipt gets the Dub or Sub link of vidstream
         val jsScript = """
@@ -122,7 +130,19 @@ class JsInterceptor(private val serverid: String) : Interceptor {
             webView?.stopLoading()
             webView?.destroy()
             webView = null
+            context.let { Toast.makeText(it, "Success!", Toast.LENGTH_SHORT).show()}
         }
+        var loop = 0
+        val totalTime = 60000L
+
+        val delayTime = 100L
+
+        while (loop < totalTime / delayTime) {
+            if (newRequest != null) return newRequest
+            loop += 1
+        }
+        println("Web-view timeout after ${totalTime / 1000}s")
+        destroyWebView()
         return newRequest
     }
 }
