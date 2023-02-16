@@ -101,7 +101,7 @@ class NineAnimeProvider : MainAPI() {
     override suspend fun quickSearch(query: String): List<SearchResponse>? {
         val vrf = vrfInterceptor.getVrf(query)
         val url =
-            "$mainUrl/ajax/anime/search?keyword=$query&vrf=$vrf"
+            "$mainUrl/ajax/anime/search?keyword=$query&vrf=${encode(vrf)}"
         val response = app.get(url).parsedSafe<QuickSearchResponse>()
         val document = Jsoup.parse(response?.result?.html ?: return null)
         return document.select(".items > a").mapNotNull { element ->
@@ -116,7 +116,7 @@ class NineAnimeProvider : MainAPI() {
     override suspend fun search(query: String): List<SearchResponse> {
         val vrf = vrfInterceptor.getVrf(query)        //?language%5B%5D=${if (selectDub) "dubbed" else "subbed"}&
         val url =
-            "$mainUrl/filter?keyword=${encode(query)}&vrf=${vrf}&page=1"
+            "$mainUrl/filter?keyword=${encode(query)}&vrf=${encode(vrf)}&page=1"
         return app.get(url).document.select("#list-items div.ani.poster.tip > a").mapNotNull {
             val link = fixUrl(it.attr("href") ?: return@mapNotNull null)
             val img = it.select("img")
@@ -154,7 +154,7 @@ class NineAnimeProvider : MainAPI() {
 
         val vrf = encode(vrfInterceptor.getVrf(id))
 
-        val episodeListUrl = "$mainUrl/ajax/episode/list/$id?vrf=$vrf"
+        val episodeListUrl = "$mainUrl/ajax/episode/list/$id?vrf=${encode(vrf)}"
         val body =
             app.get(episodeListUrl).parsedSafe<Response>()?.html
                 ?: throw ErrorLoadingException("Could not parse json with Vrf=$vrf id=$id url=\n$episodeListUrl")
