@@ -3,6 +3,6 @@
   "description": "Spanish, English Providers",
   "manifestVersion": 1,
   "pluginLists": [
-    "https://github.com/Stormunblessed/stormunblessed-cs3/raw/builds/plugins.json"
+    "https://github.com/stormunblessed/stormunblessed-cs3/raw/builds/plugins.json"
   ]
 }
