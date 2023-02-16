@@ -5,7 +5,6 @@ import com.lagradost.cloudstream3.*
 import com.stormunblessed.JsVrfInterceptor
 import com.lagradost.cloudstream3.utils.*
 import com.lagradost.cloudstream3.utils.AppUtils.parseJson
-import okhttp3.OkHttpClient
 import org.jsoup.Jsoup
 import com.lagradost.cloudstream3.utils.M3u8Helper.Companion.generateM3u8
 import com.stormunblessed.JsInterceptor
@@ -154,7 +153,7 @@ class NineAnimeProvider : MainAPI() {
 
         val vrf = encode(vrfInterceptor.getVrf(id))
 
-        val episodeListUrl = "$mainUrl/ajax/episode/list/$id?vrf=${encode(vrf)}"
+        val episodeListUrl = "$mainUrl/ajax/episode/list/$id?vrf=${vrf}"
         val body =
             app.get(episodeListUrl).parsedSafe<Response>()?.html
                 ?: throw ErrorLoadingException("Could not parse json with Vrf=$vrf id=$id url=\n$episodeListUrl")
