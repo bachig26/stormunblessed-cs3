@@ -1,12 +1,13 @@
 // use an integer for version numbers
-version = 3
+version = 1
 
 
 cloudstream {
     language = "en"
     // All of these properties are optional, you can safely remove them
-     description = "Webview is used to load links, reload if necessary"
-     authors = listOf("Stormunblessed")
+
+    //description = "Webview is used to load links, reload if necessary"
+    authors = listOf("Stormunblessed")
 
     /**
      * Status int as the following:
@@ -16,7 +17,10 @@ cloudstream {
      * 3: Beta only
      * */
     status = 1 // will be 3 if unspecified
+    tvTypes = listOf(
+        "Anime",
+        "OVA",
+    )
 
-
-    iconUrl = "https://www.google.com/s2/favicons?domain=bflix.ru&sz=%size%"
+    iconUrl = "https://www.google.com/s2/favicons?domain=animension.to&sz=%size%"
 }

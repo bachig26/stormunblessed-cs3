@@ -14,6 +14,7 @@ open class BflixProvider : MainAPI() {
     override val hasMainPage = true
     override val hasChromecastSupport = true
     override val hasDownloadSupport = true
+    override val hasQuickSearch = true
     override val supportedTypes = setOf(
         TvType.Movie,
         TvType.TvSeries,
@@ -176,6 +177,26 @@ open class BflixProvider : MainAPI() {
         return HomePageResponse(items)
     }
 
+
+    data class QuickSearchResult(
+        @JsonProperty("html") val html: String? = null,
+        //@JsonProperty("linkMore") val linkMore: String? = null
+    )
+    override suspend fun quickSearch(query: String): List<SearchResponse>? {
+        val encodedquery = encodeVrf(query, mainKey)
+        val url = "$mainUrl/ajax/film/search?vrf=$encodedquery&keyword=$query"
+        val response = app.get(url).parsedSafe<QuickSearchResult>()
+        val elementa = if (mainUrl.contains("fmovies")) "a.item" else "a"
+        val document = Jsoup.parse(response?.html ?: return null)
+        return document.select(elementa).mapNotNull {element ->
+            val link = fixUrl(element?.attr("href") ?: return@mapNotNull null)
+            val title = (element.selectFirst("div.title") ?: element.selectFirst("div.name"))?.text() ?: return@mapNotNull null
+            val img = (element.selectFirst("div.poster img") ?: element.selectFirst("img"))?.attr("src") ?: return@mapNotNull null
+            newTvSeriesSearchResponse(title, link){
+                this.posterUrl = img
+            }
+        }
+    }
     override suspend fun search(query: String): List<SearchResponse>? {
         val encodedquery = encodeVrf(query, mainKey)
         val url = "$mainUrl/search?keyword=$query&vrf=$encodedquery"
