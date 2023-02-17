@@ -65,21 +65,21 @@ class JsInterceptor(private val serverid: String, private val lang:String) : Int
 
         // JavaSrcipt gets the Dub or Sub link of vidstream
         val jsScript = """
-            (function(){
-                let jqclk = jQuery.Event('click');
-                jqclk.isTrusted = true;
-                jqclk.originalEvent = {
-                  isTrusted: true
-                };
-                ${'$'}('div[data-type="$lang"] ul li[data-sv-id="$serverid"]').trigger(jqclk);
-                let intervalId = setInterval(() => {
-                    let element = document.querySelector("#player iframe");
-                    if (element) {
-                        clearInterval(intervalId);
-                        window.android.passPayload(element.src);
-                    }
-                }, 500);
-            })();
+                (function() {
+                    let jqclk = jQuery.Event('click');
+                    jqclk.isTrusted = true;
+                    jqclk.originalEvent = {
+                        isTrusted: true
+                    };
+                    jQuery('div[data-type=\"$lang\"] ul li[data-sv-id=\"$serverid\"]')[0].click();;
+                    let intervalId = setInterval(() => {
+                        let element = document.querySelector("#player iframe");
+                        if (element) {
+                            clearInterval(intervalId);
+                            window.android.passPayload(element.src);
+                        }
+                    }, 500);
+                })();
         """
 
         val headers = request.headers.toMultimap().mapValues { it.value.getOrNull(0) ?: "" }.toMutableMap()
