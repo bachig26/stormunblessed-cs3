@@ -8,6 +8,7 @@ import com.lagradost.cloudstream3.utils.AppUtils.parseJson
 import org.jsoup.Jsoup
 import com.lagradost.cloudstream3.utils.M3u8Helper.Companion.generateM3u8
 import com.stormunblessed.JsInterceptor
+import org.jsoup.nodes.Element
 
 class NineAnimeProvider : MainAPI() {
     override var mainUrl = "https://9anime.id"
@@ -115,7 +116,7 @@ class NineAnimeProvider : MainAPI() {
     override suspend fun search(query: String): List<SearchResponse> {
         val vrf = vrfInterceptor.getVrf(query)        //?language%5B%5D=${if (selectDub) "dubbed" else "subbed"}&
         val url =
-            "$mainUrl/filter?keyword=${encode(query)}&vrf=${encode(vrf)}&page=1"
+            "$mainUrl/filter?keyword=${query}&vrf=${encode(vrf)}&page=1"
         return app.get(url).document.select("#list-items div.ani.poster.tip > a").mapNotNull {
             val link = fixUrl(it.attr("href") ?: return@mapNotNull null)
             val img = it.select("img")
@@ -133,10 +134,23 @@ class NineAnimeProvider : MainAPI() {
 
         @JsonProperty("llaa"     ) var llaa     : String?  = null,
         @JsonProperty("epurl"    ) var epurl    : String?  = null,
-        @JsonProperty("isdubbed" ) var isdubbed : Boolean? = null,
-        @JsonProperty("issubbed" ) var issubbed : Boolean? = null
+        @JsonProperty("needDUB" ) var needDub : Boolean? = null,
+        )
 
-    )
+
+    private fun Element.toGetEpisode(url: String, needDub: Boolean):Episode{
+        val ids = this.attr("data-ids").split(",", limit = 2)
+        val epNum = this.attr("data-num")
+            .toIntOrNull() // might fuck up on 7.5 ect might use data-slug instead
+        val epTitle = this.selectFirst("span.d-title")?.text()
+        val epurl = "$url/ep-$epNum"
+        val data = "{\"llaa\":\"null\",\"epurl\":\"$epurl\",\"needDUB\":$needDub}"
+        return Episode(
+            data,
+            epTitle,
+            episode = epNum
+        )
+    }
     override suspend fun load(url: String): LoadResponse {
         val validUrl = url.replace("https://9anime.to", mainUrl)
         val doc = app.get(validUrl).document
@@ -164,22 +178,14 @@ class NineAnimeProvider : MainAPI() {
         //TODO RECOMMENDATIONS
 
         Jsoup.parse(body).body().select(".episodes > ul > li > a").apmap { element ->
-            val ids = element.attr("data-ids").split(",", limit = 2)
-            val epNum = element.attr("data-num")
-                .toIntOrNull() // might fuck up on 7.5 ect might use data-slug instead
-            val epTitle = element.selectFirst("span.d-title")?.text()
-            val sub = element.attr("data-sub").toInt().toBoolean()
             val dub = element.attr("data-dub").toInt().toBoolean()
-            val epurl = "$url/ep-$epNum"
-            val data = "{\"llaa\":\"null\",\"epurl\":\"$epurl\",\"isdubbed\":$dub,\"issubbed\":$sub}"
-            val ep =
-                Episode(
-                    data,
-                    epTitle,
-                    episode = epNum
-                )
+            val sub = element.attr("data-sub").toInt().toBoolean()
+
+            if (dub) {
+                dubEpisodes.add(element.toGetEpisode(url, true))
+            }
             if (sub) {
-                subEpisodes.add(ep)
+                subEpisodes.add(element.toGetEpisode(url, false))
             }
 
         }
@@ -286,15 +292,14 @@ class NineAnimeProvider : MainAPI() {
         callback: (ExtractorLink) -> Unit
     ): Boolean {
         val parsedata = parseJson<EpsInfo>(data)
-        val isdub = parsedata.isdubbed == true
-        val issub = parsedata.issubbed == true
-        if (issub){
-            getM3U8(parsedata.epurl!!,"sub",callback)
+        val epurl = parsedata.epurl
+        val needDub = parsedata.needDub == true
+        if (needDub) {
+            getM3U8(epurl!!, "dub", callback)
         }
-        if (isdub){
-            getM3U8(parsedata.epurl!!,"dub",callback)
+        if (!needDub) {
+            getM3U8(epurl!!, "sub", callback)
         }
-
         return true
     }
 }

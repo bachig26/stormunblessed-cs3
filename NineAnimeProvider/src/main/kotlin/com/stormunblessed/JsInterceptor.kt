@@ -13,6 +13,7 @@ import android.widget.Toast
 import com.lagradost.cloudstream3.AcraApplication.Companion.context
 import com.lagradost.cloudstream3.utils.Coroutines
 import com.lagradost.cloudstream3.utils.Coroutines.main
+import kotlinx.coroutines.runBlocking
 import okhttp3.*
 import java.util.concurrent.CountDownLatch
 
@@ -31,15 +32,15 @@ class JsInterceptor(private val serverid: String, private val lang:String) : Int
 
 
     override fun intercept(chain: Interceptor.Chain): Response {
-
         val mess = if (serverid == "41") "Vidstream" else if (serverid == "28") "Mcloud" else ""
-        val originalRequest = chain.request()
         handler.post {
             context.let { Toast.makeText(it, "Getting $mess link, please wait", Toast.LENGTH_LONG).show() }
         }
-        val newRequest = resolveWithWebView(originalRequest) ?: throw Exception("Someting went wrong")
-
-        return chain.proceed(newRequest)
+        val request = chain.request()
+        return runBlocking {
+            val fixedRequest = resolveWithWebView(request)
+            return@runBlocking chain.proceed(fixedRequest ?: request)
+        }
     }
 
 
