@@ -261,7 +261,8 @@ class CuevanaProvider : MainAPI() {
                         "TE" to "trailers")
                 ).headers["location"]
                 if (requestservers != null){
-                    loadExtractor(requestservers, data, subtitleCallback, callback)
+                    val aa = requestservers.replace("https://sbembed.com","https://watchsb.com")
+                    loadExtractor(aa, data, subtitleCallback, callback)
                 }
             }
             if (iframe.contains(Regex("tomato.*index.php"))) {
