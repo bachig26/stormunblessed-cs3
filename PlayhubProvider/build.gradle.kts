@@ -1,5 +1,5 @@
 // use an integer for version numbers
-version = 8
+version = 1
 
 
 cloudstream {
@@ -18,9 +18,8 @@ cloudstream {
      * */
     status = 1 // will be 3 if unspecified
     tvTypes = listOf(
-        "TvSeries",
         "Movie",
     )
 
-    iconUrl = "https://www.google.com/s2/favicons?domain=cuevana3.me&sz=%size%"
+    iconUrl = "https://www.google.com/s2/favicons?domain=playhublite.com&sz=%size%"
 }

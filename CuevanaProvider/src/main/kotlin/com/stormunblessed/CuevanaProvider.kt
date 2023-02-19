@@ -152,7 +152,7 @@ class CuevanaProvider : MainAPI() {
                     year = null
                 )
             }
-        val trailer = soup.selectFirst("div.TPlayer.embed_div div[id=OptY] iframe")?.attr("data-src")
+        val trailer = soup.selectFirst("div.TPlayer.embed_div div[id=OptY] iframe")?.attr("data-src") ?: ""
 
 
         return when (tvType) {
@@ -175,7 +175,7 @@ class CuevanaProvider : MainAPI() {
                     this.year = year
                     this.tags = tags
                     this.recommendations = recommendations
-                    if (trailer!!.isNotBlank()) addTrailer(trailer)
+                    if (trailer.isNotBlank()) addTrailer(trailer)
                 }
 
             }
