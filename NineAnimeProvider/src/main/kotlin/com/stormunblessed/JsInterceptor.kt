@@ -11,12 +11,13 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
 import com.lagradost.cloudstream3.AcraApplication.Companion.context
+import com.lagradost.cloudstream3.USER_AGENT
 import com.lagradost.cloudstream3.utils.Coroutines
 import com.lagradost.cloudstream3.utils.Coroutines.main
 import kotlinx.coroutines.runBlocking
 import okhttp3.*
 import java.util.concurrent.CountDownLatch
-
+import java.util.concurrent.TimeUnit
 
 
 class JsInterceptor(private val serverid: String, private val lang:String) : Interceptor {
@@ -30,7 +31,6 @@ class JsInterceptor(private val serverid: String, private val lang:String) : Int
         }
     }
 
-
     override fun intercept(chain: Interceptor.Chain): Response {
         val mess = if (serverid == "41") "Vidstream" else if (serverid == "28") "Mcloud" else ""
         handler.post {
@@ -42,7 +42,6 @@ class JsInterceptor(private val serverid: String, private val lang:String) : Int
             return@runBlocking chain.proceed(fixedRequest ?: request)
         }
     }
-
 
     @SuppressLint("SetJavaScriptEnabled")
     private fun resolveWithWebView(request: Request): Request? {
@@ -82,7 +81,6 @@ class JsInterceptor(private val serverid: String, private val lang:String) : Int
                     }, 500);
                 })();
         """
-
         val headers = request.headers.toMultimap().mapValues { it.value.getOrNull(0) ?: "" }.toMutableMap()
 
         var newRequest: Request? = null
@@ -96,7 +94,7 @@ class JsInterceptor(private val serverid: String, private val lang:String) : Int
                 databaseEnabled = true
                 useWideViewPort = false
                 loadWithOverviewMode = false
-                userAgentString = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:106.0) Gecko/20100101 Firefox/106.0"
+                userAgentString = USER_AGENT
                 blockNetworkImage = true
                 webview.addJavascriptInterface(jsinterface, "android")
                 webview.webViewClient = object : WebViewClient() {
@@ -130,8 +128,7 @@ class JsInterceptor(private val serverid: String, private val lang:String) : Int
             }
         }
 
-        latch.await()
-
+        latch.await(45, TimeUnit.SECONDS)
         handler.post {
             webView?.stopLoading()
             webView?.destroy()

@@ -271,8 +271,8 @@ class NineAnimeProvider : MainAPI() {
     private suspend fun getM3U8(epurl: String, lang: String, callback: (ExtractorLink) -> Unit):Boolean{
         val isdub = lang == "dub"
         val vidstream = app.get(epurl, interceptor = JsInterceptor("41", lang), timeout = 45)
-        val vidurl = vidstream.url
         val mcloud = app.get(epurl, interceptor = JsInterceptor("28", lang), timeout = 45)
+        val vidurl = vidstream.url
         val murl = mcloud.url
         val ll = listOf(vidurl, murl)
         ll.apmap {link ->
