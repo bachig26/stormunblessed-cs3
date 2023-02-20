@@ -193,7 +193,7 @@ class NineAnimeProvider : MainAPI() {
 
         val typetwo =  when(doc.selectFirst("div.meta:nth-child(1) > div:contains(Type:) span")?.text())  {
             "OVA" -> TvType.Anime
-            "MOVIE" -> TvType.AnimeMovie
+            //"MOVIE" -> TvType.AnimeMovie
             else -> TvType.Anime
         }
         val duration = doc.selectFirst(".bmeta > div > div:contains(Duration:) > span")?.text()
@@ -246,32 +246,21 @@ class NineAnimeProvider : MainAPI() {
         callback: (ExtractorLink) -> Unit
     )  {
         return generateM3u8(
-            this.name,
+            name,
             streamLink,
             referer
-        ).forEach { sub ->
-            callback(
-                ExtractorLink(
-                    this.name,
-                    name,
-                    sub.url,
-                    referer,
-                    getQualityFromName(sub.quality.toString()),
-                    true
-                )
-            )
-        }
+        ).forEach(callback)
     }
 
 
     private suspend fun getM3U8(epurl: String, lang: String, callback: (ExtractorLink) -> Unit):Boolean{
         val isdub = lang == "dub"
         val vidstream = app.get(epurl, interceptor = JsInterceptor("41", lang), timeout = 45)
-        //val mcloud = app.get(epurl, interceptor = JsInterceptor("28", lang), timeout = 45)
+        val mcloud = app.get(epurl, interceptor = JsInterceptor("28", lang), timeout = 45)
         val vidurl = vidstream.url
-        //val murl = mcloud.url
-        val ll = listOf(vidurl)
-        ll.apmap {link ->
+        val murl = mcloud.url
+        val ll = listOf(vidurl, murl)
+        ll.forEach {link ->
             val vv = link.contains("mcloud")
             val name1 = if (vv) "Mcloud" else "Vidstream"
             val ref = if (vv) "https://mcloud.to/" else ""

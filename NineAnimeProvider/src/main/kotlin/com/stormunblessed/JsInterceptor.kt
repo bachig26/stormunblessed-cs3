@@ -20,6 +20,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 
+//Credits https://github.com/jmir1/aniyomi-extensions/blob/master/src/en/nineanime/src/eu/kanade/tachiyomi/animeextension/en/nineanime/JsInterceptor.kt
 class JsInterceptor(private val serverid: String, private val lang:String) : Interceptor {
 
     private val handler by lazy { Handler(Looper.getMainLooper()) }
@@ -51,8 +52,6 @@ class JsInterceptor(private val serverid: String, private val lang:String) : Int
 
         val origRequestUrl = request.url.toString()
 
-        val jsinterface = JsObject()
-
         fun destroyWebView() {
             Coroutines.main {
                 webView?.stopLoading()
@@ -66,19 +65,9 @@ class JsInterceptor(private val serverid: String, private val lang:String) : Int
         // JavaSrcipt gets the Dub or Sub link of vidstream
         val jsScript = """
                 (function() {
-                    let jqclk = jQuery.Event('click');
-                    jqclk.isTrusted = true;
-                    jqclk.originalEvent = {
-                        isTrusted: true
-                    };
-                    jQuery('div[data-type=\"$lang\"] ul li[data-sv-id=\"$serverid\"]')[0].click();;
-                    let intervalId = setInterval(() => {
-                        let element = document.querySelector("#player iframe");
-                        if (element) {
-                            clearInterval(intervalId);
-                            window.android.passPayload(element.src);
-                        }
-                    }, 500);
+                  var click = document.createEvent('MouseEvents');
+                  click.initMouseEvent('click', true, true);
+                  document.querySelector('div[data-type="$lang"] ul li[data-sv-id="$serverid"]').dispatchEvent(click);
                 })();
         """
         val headers = request.headers.toMultimap().mapValues { it.value.getOrNull(0) ?: "" }.toMutableMap()
@@ -96,7 +85,6 @@ class JsInterceptor(private val serverid: String, private val lang:String) : Int
                 loadWithOverviewMode = false
                 userAgentString = USER_AGENT
                 blockNetworkImage = true
-                webview.addJavascriptInterface(jsinterface, "android")
                 webview.webViewClient = object : WebViewClient() {
                     override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
 
@@ -128,7 +116,7 @@ class JsInterceptor(private val serverid: String, private val lang:String) : Int
             }
         }
 
-        latch.await(60, TimeUnit.SECONDS)
+        latch.await(30, TimeUnit.SECONDS)
         handler.post {
             webView?.stopLoading()
             webView?.destroy()
