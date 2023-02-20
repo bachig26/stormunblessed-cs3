@@ -128,7 +128,7 @@ class JsInterceptor(private val serverid: String, private val lang:String) : Int
             }
         }
 
-        latch.await(45, TimeUnit.SECONDS)
+        latch.await(60, TimeUnit.SECONDS)
         handler.post {
             webView?.stopLoading()
             webView?.destroy()

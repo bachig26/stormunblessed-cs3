@@ -1,14 +1,15 @@
 package com.stormunblessed
 
+
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.lagradost.cloudstream3.*
-import com.stormunblessed.JsVrfInterceptor
+import com.lagradost.cloudstream3.LoadResponse.Companion.addDuration
 import com.lagradost.cloudstream3.utils.*
 import com.lagradost.cloudstream3.utils.AppUtils.parseJson
 import org.jsoup.Jsoup
 import com.lagradost.cloudstream3.utils.M3u8Helper.Companion.generateM3u8
-import com.stormunblessed.JsInterceptor
 import org.jsoup.nodes.Element
+
 
 class NineAnimeProvider : MainAPI() {
     override var mainUrl = "https://9anime.id"
@@ -77,7 +78,7 @@ class NineAnimeProvider : MainAPI() {
             }
         }
 
-        return newHomePageResponse(request.name, home)
+        return newHomePageResponse(request.name, home, true)
     }
 
     data class Response(
@@ -135,11 +136,11 @@ class NineAnimeProvider : MainAPI() {
         @JsonProperty("llaa"     ) var llaa     : String?  = null,
         @JsonProperty("epurl"    ) var epurl    : String?  = null,
         @JsonProperty("needDUB" ) var needDub : Boolean? = null,
+
         )
 
-
     private fun Element.toGetEpisode(url: String, needDub: Boolean):Episode{
-        val ids = this.attr("data-ids").split(",", limit = 2)
+        //val ids = this.attr("data-ids").split(",", limit = 2)
         val epNum = this.attr("data-num")
             .toIntOrNull() // might fuck up on 7.5 ect might use data-slug instead
         val epTitle = this.selectFirst("span.d-title")?.text()
@@ -161,10 +162,11 @@ class NineAnimeProvider : MainAPI() {
         val binfo =
             meta.selectFirst(".binfo") ?: throw ErrorLoadingException("Could not find binfo")
         val info = binfo.selectFirst(".info") ?: throw ErrorLoadingException("Could not find info")
-
+        val backimginfo = doc.selectFirst("#player")?.attr("style")
+        val backimgRegx = Regex("(http|https).*jpg")
+        val backposter = backimgRegx.find(backimginfo.toString())?.value ?: ""
         val title = (info.selectFirst(".title") ?: info.selectFirst(".d-title"))?.text()
             ?: throw ErrorLoadingException("Could not find title")
-
         val vrf = encode(vrfInterceptor.getVrf(id))
 
         val episodeListUrl = "$mainUrl/ajax/episode/list/$id?vrf=${vrf}"
@@ -174,8 +176,27 @@ class NineAnimeProvider : MainAPI() {
 
         val subEpisodes = ArrayList<Episode>()
         val dubEpisodes = ArrayList<Episode>()
+        val genres = doc.select("div.meta:nth-child(1) > div:contains(Genre:) a").mapNotNull { it.text() }
+        val recss = doc.select("div#watch-second .w-side-section div.body a.item").mapNotNull { rec ->
+            val href = rec.attr("href")
+            val rectitle = rec.selectFirst(".name")?.text() ?: ""
+            val recimg = rec.selectFirst("img")?.attr("src")
+            newAnimeSearchResponse(rectitle,fixUrl(href)){
+                this.posterUrl = recimg
+            }
+        }
+        val status = when (doc.selectFirst("div.meta:nth-child(1) > div:contains(Status:) span")?.text()) {
+            "Releasing" -> ShowStatus.Ongoing
+            "Completed" -> ShowStatus.Completed
+            else -> null
+        }
 
-        //TODO RECOMMENDATIONS
+        val typetwo =  when(doc.selectFirst("div.meta:nth-child(1) > div:contains(Type:) span")?.text())  {
+            "OVA" -> TvType.Anime
+            "MOVIE" -> TvType.AnimeMovie
+            else -> TvType.Anime
+        }
+        val duration = doc.selectFirst(".bmeta > div > div:contains(Duration:) > span")?.text()
 
         Jsoup.parse(body).body().select(".episodes > ul > li > a").apmap { element ->
             val dub = element.attr("data-dub").toInt().toBoolean()
@@ -189,43 +210,18 @@ class NineAnimeProvider : MainAPI() {
             }
 
         }
-
         return newAnimeLoadResponse(title, url, TvType.Anime) {
             addEpisodes(DubStatus.Dubbed, dubEpisodes)
             addEpisodes(DubStatus.Subbed, subEpisodes)
-
             plot = info.selectFirst(".synopsis > .shorting > .content")?.text()
             posterUrl = binfo.selectFirst(".poster > span > img")?.attr("src")
             rating = ratingElement.attr("data-score").toFloat().times(1000f).toInt()
-
-            info.select(".bmeta > .meta > div").forEach { element ->
-                when (element.ownText()) {
-                    "Genre: " -> {
-                        tags = element.select("span > a").mapNotNull { it?.text() }
-                    }
-                    "Duration: " -> {
-                        duration = getDurationFromString(element.selectFirst("span")?.text())
-                    }
-                    "Type: " -> {
-                        type = when (element.selectFirst("span > a")?.text()) {
-                            "ONA" -> TvType.OVA
-                            else -> {
-                                type
-                            }
-                        }
-                    }
-                    "Status: " -> {
-                        showStatus = when (element.selectFirst("span")?.text()) {
-                            "Releasing" -> ShowStatus.Ongoing
-                            "Completed" -> ShowStatus.Completed
-                            else -> {
-                                showStatus
-                            }
-                        }
-                    }
-                    else -> {}
-                }
-            }
+            this.backgroundPosterUrl = backposter
+            this.tags = genres
+            this.recommendations = recss
+            this.showStatus = status
+            this.type = typetwo
+            addDuration(duration)
         }
     }
 
@@ -239,9 +235,9 @@ class NineAnimeProvider : MainAPI() {
         val result: Result? = null
     )
 
-    private suspend fun getEpisodeLinks(id: String): Links? {
+    /*private suspend fun getEpisodeLinks(id: String): Links? {
         return app.get("$mainUrl/ajax/server/$id?vrf=encodeVrf(id, cipherKey)}").parsedSafe()
-    }
+    }*/
 
     private suspend fun getStream(
         streamLink: String,
@@ -271,10 +267,10 @@ class NineAnimeProvider : MainAPI() {
     private suspend fun getM3U8(epurl: String, lang: String, callback: (ExtractorLink) -> Unit):Boolean{
         val isdub = lang == "dub"
         val vidstream = app.get(epurl, interceptor = JsInterceptor("41", lang), timeout = 45)
-        val mcloud = app.get(epurl, interceptor = JsInterceptor("28", lang), timeout = 45)
+        //val mcloud = app.get(epurl, interceptor = JsInterceptor("28", lang), timeout = 45)
         val vidurl = vidstream.url
-        val murl = mcloud.url
-        val ll = listOf(vidurl, murl)
+        //val murl = mcloud.url
+        val ll = listOf(vidurl)
         ll.apmap {link ->
             val vv = link.contains("mcloud")
             val name1 = if (vv) "Mcloud" else "Vidstream"
