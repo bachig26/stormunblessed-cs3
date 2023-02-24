@@ -33,10 +33,7 @@ class JsInterceptor(private val serverid: String, private val lang:String) : Int
     }
 
     override fun intercept(chain: Interceptor.Chain): Response {
-        val mess = if (serverid == "41") "Vidstream" else if (serverid == "28") "Mcloud" else ""
-        handler.post {
-            context.let { Toast.makeText(it, "Getting $mess link, please wait", Toast.LENGTH_LONG).show() }
-        }
+        //val mess = if (serverid == "41") "Vidstream" else if (serverid == "28") "Mcloud" else ""
         val request = chain.request()
         return runBlocking {
             val fixedRequest = resolveWithWebView(request)
@@ -121,7 +118,7 @@ class JsInterceptor(private val serverid: String, private val lang:String) : Int
             webView?.stopLoading()
             webView?.destroy()
             webView = null
-            context.let { Toast.makeText(it, "Success!", Toast.LENGTH_SHORT).show()}
+            //context.let { Toast.makeText(it, "Success!", Toast.LENGTH_SHORT).show()}
         }
 
         var loop = 0
