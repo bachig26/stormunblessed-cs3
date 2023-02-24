@@ -6,11 +6,11 @@ import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.LoadResponse.Companion.addDuration
 import com.lagradost.cloudstream3.utils.*
 import com.lagradost.cloudstream3.utils.AppUtils.parseJson
-import org.jsoup.Jsoup
 import com.lagradost.cloudstream3.utils.M3u8Helper.Companion.generateM3u8
+import kotlinx.coroutines.delay
+import org.jsoup.Jsoup
+import com.lagradost.cloudstream3.utils.ExtractorLink
 import org.jsoup.nodes.Element
-
-
 class NineAnimeProvider : MainAPI() {
     override var mainUrl = "https://9anime.id"
     override var name = "9Anime"
@@ -22,18 +22,7 @@ class NineAnimeProvider : MainAPI() {
 
     private val vrfInterceptor by lazy { JsVrfInterceptor(mainUrl) }
 
-    // taken from https://github.com/saikou-app/saikou/blob/b35364c8c2a00364178a472fccf1ab72f09815b4/app/src/main/java/ani/saikou/parsers/anime/NineAnime.kt
-    // GNU General Public License v3.0 https://github.com/saikou-app/saikou/blob/main/LICENSE.md
     companion object {
-        fun getDubStatus(title: String): DubStatus {
-            return if (title.contains("(dub)", ignoreCase = true)) {
-                DubStatus.Dubbed
-            } else {
-                DubStatus.Subbed
-            }
-        }
-
-
         fun encode(input: String): String =
             java.net.URLEncoder.encode(input, "utf-8").replace("+", "%2B")
 
@@ -99,19 +88,9 @@ class NineAnimeProvider : MainAPI() {
         //@JsonProperty("linkMore") val linkMore: String? = null
     )
 
-    override suspend fun quickSearch(query: String): List<SearchResponse>? {
-        val vrf = vrfInterceptor.getVrf(query)
-        val url =
-            "$mainUrl/ajax/anime/search?keyword=$query&vrf=${encode(vrf)}"
-        val response = app.get(url).parsedSafe<QuickSearchResponse>()
-        val document = Jsoup.parse(response?.result?.html ?: return null)
-        return document.select(".items > a").mapNotNull { element ->
-            val link = fixUrl(element?.attr("href") ?: return@mapNotNull null)
-            val title = element.selectFirst(".info > .name")?.text() ?: return@mapNotNull null
-            newAnimeSearchResponse(title, link) {
-                posterUrl = element.selectFirst(".poster > span > img")?.attr("src")
-            }
-        }
+    override suspend fun quickSearch(query: String): List<SearchResponse> {
+        delay(1000)
+        return search(query)
     }
 
     override suspend fun search(query: String): List<SearchResponse> {
@@ -122,8 +101,17 @@ class NineAnimeProvider : MainAPI() {
             val link = fixUrl(it.attr("href") ?: return@mapNotNull null)
             val img = it.select("img")
             val title = img.attr("alt")
+            val subbedEpisodes = it?.selectFirst(".sub")?.text()?.toIntOrNull()
+            val dubbedEpisodes = it?.selectFirst(".dub")?.text()?.toIntOrNull()
             newAnimeSearchResponse(title, link) {
                 posterUrl = img.attr("src")
+                addDubStatus(
+                    dubbedEpisodes != null,
+                    subbedEpisodes != null,
+                    dubbedEpisodes,
+                    subbedEpisodes
+                )
+
             }
         }
     }
@@ -162,9 +150,10 @@ class NineAnimeProvider : MainAPI() {
         val binfo =
             meta.selectFirst(".binfo") ?: throw ErrorLoadingException("Could not find binfo")
         val info = binfo.selectFirst(".info") ?: throw ErrorLoadingException("Could not find info")
+        val poster = binfo.selectFirst(".poster > span > img")?.attr("src")
         val backimginfo = doc.selectFirst("#player")?.attr("style")
         val backimgRegx = Regex("(http|https).*jpg")
-        val backposter = backimgRegx.find(backimginfo.toString())?.value ?: ""
+        val backposter = backimgRegx.find(backimginfo.toString())?.value ?: poster
         val title = (info.selectFirst(".title") ?: info.selectFirst(".d-title"))?.text()
             ?: throw ErrorLoadingException("Could not find title")
         val vrf = encode(vrfInterceptor.getVrf(id))
@@ -192,7 +181,8 @@ class NineAnimeProvider : MainAPI() {
         }
 
         val typetwo =  when(doc.selectFirst("div.meta:nth-child(1) > div:contains(Type:) span")?.text())  {
-            "OVA" -> TvType.Anime
+            "OVA" -> TvType.OVA
+            "SPECIAL" -> TvType.OVA
             //"MOVIE" -> TvType.AnimeMovie
             else -> TvType.Anime
         }
@@ -214,7 +204,7 @@ class NineAnimeProvider : MainAPI() {
             addEpisodes(DubStatus.Dubbed, dubEpisodes)
             addEpisodes(DubStatus.Subbed, subEpisodes)
             plot = info.selectFirst(".synopsis > .shorting > .content")?.text()
-            posterUrl = binfo.selectFirst(".poster > span > img")?.attr("src")
+            this.posterUrl = poster
             rating = ratingElement.attr("data-score").toFloat().times(1000f).toInt()
             this.backgroundPosterUrl = backposter
             this.tags = genres
