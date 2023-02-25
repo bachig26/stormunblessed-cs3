@@ -1,11 +1,11 @@
-package com.lagradost.cloudstream3.movieproviders
+package com.stormunblessed
 
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.AppUtils.parseJson
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.loadExtractor
 
-class Pelisplus4KProvider:MainAPI() {
+class Pelisplus4KProvider :MainAPI() {
     override var mainUrl = "https://ww3.pelisplus.to"
     override var name = "Pelisplus4K"
     override var lang = "es"
@@ -60,14 +60,7 @@ class Pelisplus4KProvider:MainAPI() {
         }
     }
 
-    class MainTemporada(elements: Map<String, List<MainTemporadaElement>>) : HashMap<String, List<MainTemporadaElement>>(elements) {
-        fun toJson() = mapper.writeValueAsString(this)
-
-        companion object {
-            fun fromJson(json: String) = parseJson<MainTemporada>(json)
-        }
-    }
-
+    class MainTemporada(elements: Map<String, List<MainTemporadaElement>>) : HashMap<String, List<MainTemporadaElement>>(elements)
     data class MainTemporadaElement (
         val title: String? = null,
         val image: String? = null,
@@ -84,19 +77,21 @@ class Pelisplus4KProvider:MainAPI() {
         val tags = doc.select("div.home__slider .genres:contains(Generos) a").map { it.text() }
         val epi = ArrayList<Episode>()
         if (tvType == TvType.TvSeries) {
-            val episodeScriptText = doc.select("script").mapNotNull {script ->
-                val aa = if (script.data().contains(Regex("title.*\\\"(.*)\\\""))) script.data().substringAfter("seasonsJson = ").substringBefore(";")
-                else null
-                aa
-            }.first()
-            val aaa = MainTemporada.fromJson(episodeScriptText)
-            aaa.map {
-                it.value.reversed().forEach {info ->
+            var jsonscript = ""
+            doc.select("script[type=text/javascript]").mapNotNull {script ->
+                val ssRegex = Regex("(?i)seasons")
+                val ss =  if (script.data().contains(ssRegex)) script.data() else ""
+                val swaa = ss.substringAfter("seasonsJson = ").substringBefore(";")
+                jsonscript = swaa
+            }
+            val json = parseJson<MainTemporada>(jsonscript)
+            json.values.map { list ->
+                list.map { info ->
                     val epTitle = info.title
                     val seasonNum = info.season
                     val epNum = info.episode
                     val img = info.image
-                    val realimg = if (img?.isEmpty() == true) null else "https://image.tmdb.org/t/p/w342${img?.replace("\\/", "/")}"
+                    val realimg = if (img == null) null else if (img.isEmpty() == true) null else "https://image.tmdb.org/t/p/w342${img.replace("\\/", "/")}"
                     val epurl = "$url/season/$seasonNum/episode/$epNum"
                     epi.add(
                         Episode(
@@ -142,7 +137,7 @@ class Pelisplus4KProvider:MainAPI() {
         val doc = app.get(data).document
         doc.select(".bg-tabs li").apmap {
             val link = it.attr("data-server").replace("https://owodeuwu.xyz", "https://fembed.com")
-                .replace("https://sblanh.com","https://embedsb.com").replace(Regex("([a-zA-Z0-9]{0,8}[a-zA-Z0-9_-]+)=https:\\/\\/ww3.pelisplus.to.*"),"")
+                .replace("https://sblanh.com","https://watchsb.com").replace(Regex("([a-zA-Z0-9]{0,8}[a-zA-Z0-9_-]+)=https:\\/\\/ww3.pelisplus.to.*"),"")
             loadExtractor(link, data, subtitleCallback, callback)
         }
         return true
