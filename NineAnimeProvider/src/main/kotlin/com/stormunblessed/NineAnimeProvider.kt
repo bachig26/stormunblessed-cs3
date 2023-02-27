@@ -175,7 +175,6 @@ class NineAnimeProvider : MainAPI() {
             else -> TvType.Anime
         }
         val duration = doc.selectFirst(".bmeta > div > div:contains(Duration:) > span")?.text()
-        println("DURATION $duration")
 
         Jsoup.parse(body).body().select(".episodes > ul > li > a").apmap { element ->
             val ids = element.attr("data-ids").split(",", limit = 2)
@@ -297,7 +296,6 @@ class NineAnimeProvider : MainAPI() {
 
         serverlist.forEach { serverId ->
             val url = if (serverId.isEmpty()) "$consuNineAnimeApi/watch/$data" else "$consuNineAnimeApi/watch/$data?server=$serverId"
-            println("URL $url")
             val json = app.get(url).parsed<NineConsumet>()
             val embedURL = json.embedURL
             if (serverId.contains(Regex("(?i)vizcloud|mycloud")) || serverId.isEmpty()) {
