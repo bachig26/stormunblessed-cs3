@@ -1,12 +1,12 @@
 // use an integer for version numbers
-version = 12
+version = 13
 
 
 cloudstream {
     language = "en"
     // All of these properties are optional, you can safely remove them
 
-    description = "Webview is used to load links, reload if necessary"
+    description = "Watch 9anime with the help of the Consumet API."
     authors = listOf("Stormunblessed")
 
     /**
