@@ -47,7 +47,7 @@ fun Project.android(configuration: BaseExtension.() -> Unit) =
         compileSdkVersion(30)
 
         defaultConfig {
-            minSdk = 21
+            minSdk = 26
             targetSdk = 30
         }
 

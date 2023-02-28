@@ -14,7 +14,8 @@ import java.util.concurrent.TimeUnit
 // The following code is under the Apache License 2.0 https://github.com/jmir1/aniyomi-extensions/blob/master/LICENSE
 class JsVrfInterceptor(private val baseUrl: String) {
 
-    private val handler get() = Handler(Looper.getMainLooper())
+    private val handler by lazy { Handler(Looper.getMainLooper()) }
+
     private val vrfWebView = createWebView()
 
     fun wake() = ""

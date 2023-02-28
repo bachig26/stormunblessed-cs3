@@ -5,12 +5,11 @@ import com.fasterxml.jackson.annotation.JsonProperty
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.LoadResponse.Companion.addDuration
 import com.lagradost.cloudstream3.utils.*
-import com.lagradost.cloudstream3.utils.AppUtils.parseJson
+import org.jsoup.Jsoup
 import com.lagradost.cloudstream3.utils.M3u8Helper.Companion.generateM3u8
 import kotlinx.coroutines.delay
-import org.jsoup.Jsoup
-import com.lagradost.cloudstream3.utils.ExtractorLink
-import org.jsoup.nodes.Element
+
+
 class NineAnimeProvider : MainAPI() {
     override var mainUrl = "https://9anime.id"
     override var name = "9Anime"
@@ -20,13 +19,13 @@ class NineAnimeProvider : MainAPI() {
     override val supportedTypes = setOf(TvType.Anime)
     override val hasQuickSearch = true
 
-    private val vrfInterceptor get() =  JsVrfInterceptor(mainUrl)
-
+    private val vrfInterceptor by lazy { JsVrfInterceptor(mainUrl) }
     companion object {
         fun encode(input: String): String =
             java.net.URLEncoder.encode(input, "utf-8").replace("+", "%2B")
-
         private fun decode(input: String): String = java.net.URLDecoder.decode(input, "utf-8")
+        private const val consuNineAnimeApi = "https://api.consumet.org/anime/9anime"
+
     }
 
     override val mainPage = mainPageOf(
@@ -76,17 +75,6 @@ class NineAnimeProvider : MainAPI() {
         @JsonProperty("epurl" ) var epurl : String? = null
     )
 
-    data class QuickSearchResponse(
-        //@JsonProperty("status") val status: Int? = null,
-        @JsonProperty("result") val result: QuickSearchResult? = null,
-        //@JsonProperty("message") val message: String? = null,
-        //@JsonProperty("messages") val messages: ArrayList<String> = arrayListOf()
-    )
-
-    data class QuickSearchResult(
-        @JsonProperty("html") val html: String? = null,
-        //@JsonProperty("linkMore") val linkMore: String? = null
-    )
 
     override suspend fun quickSearch(query: String): List<SearchResponse> {
         delay(1000)
@@ -117,29 +105,29 @@ class NineAnimeProvider : MainAPI() {
     }
 
 
-    private fun Int.toBoolean() = this == 1
+    /*   private fun Int.toBoolean() = this == 1
 
-    data class EpsInfo (
+     data class EpsInfo (
 
-        @JsonProperty("llaa"     ) var llaa     : String?  = null,
-        @JsonProperty("epurl"    ) var epurl    : String?  = null,
-        @JsonProperty("needDUB" ) var needDub : Boolean? = null,
+         @JsonProperty("llaa"     ) var llaa     : String?  = null,
+         @JsonProperty("epurl"    ) var epurl    : String?  = null,
+         @JsonProperty("needDUB" ) var needDub : Boolean? = null,
 
-        )
+         )
 
-    private fun Element.toGetEpisode(url: String, needDub: Boolean):Episode{
-        //val ids = this.attr("data-ids").split(",", limit = 2)
-        val epNum = this.attr("data-num")
-            .toIntOrNull() // might fuck up on 7.5 ect might use data-slug instead
-        val epTitle = this.selectFirst("span.d-title")?.text()
-        val epurl = "$url/ep-$epNum"
-        val data = "{\"llaa\":\"null\",\"epurl\":\"$epurl\",\"needDUB\":$needDub}"
-        return Episode(
-            data,
-            epTitle,
-            episode = epNum
-        )
-    }
+     private fun Element.toGetEpisode(url: String, needDub: Boolean):Episode{
+           //val ids = this.attr("data-ids").split(",", limit = 2)
+           val epNum = this.attr("data-num")
+               .toIntOrNull() // might fuck up on 7.5 ect might use data-slug instead
+           val epTitle = this.selectFirst("span.d-title")?.text()
+           val epurl = "$url/ep-$epNum"
+           val data = "{\"llaa\":\"null\",\"epurl\":\"$epurl\",\"needDUB\":$needDub}"
+          return Episode(
+               data,
+               epTitle,
+               episode = epNum
+           )
+       } */
     override suspend fun load(url: String): LoadResponse {
         val validUrl = url.replace("https://9anime.to", mainUrl)
         val doc = app.get(validUrl).document
@@ -187,16 +175,32 @@ class NineAnimeProvider : MainAPI() {
             else -> TvType.Anime
         }
         val duration = doc.selectFirst(".bmeta > div > div:contains(Duration:) > span")?.text()
+        println("DURATION $duration")
 
         Jsoup.parse(body).body().select(".episodes > ul > li > a").apmap { element ->
-            val dub = element.attr("data-dub").toInt().toBoolean()
-            val sub = element.attr("data-sub").toInt().toBoolean()
+            val ids = element.attr("data-ids").split(",", limit = 2)
 
-            if (dub) {
-                dubEpisodes.add(element.toGetEpisode(url, true))
+            val epNum = element.attr("data-num")
+                .toIntOrNull() // might fuck up on 7.5 ect might use data-slug instead
+            val epTitle = element.selectFirst("span.d-title")?.text()
+            //val filler = element.hasClass("filler")
+            ids.getOrNull(1)?.let { dub ->
+                dubEpisodes.add(
+                    Episode(
+                        dub,
+                        epTitle,
+                        episode = epNum
+                    )
+                )
             }
-            if (sub) {
-                subEpisodes.add(element.toGetEpisode(url, false))
+            ids.getOrNull(0)?.let { sub ->
+                subEpisodes.add(
+                    Episode(
+                        sub,
+                        epTitle,
+                        episode = epNum
+                    )
+                )
             }
 
         }
@@ -243,37 +247,69 @@ class NineAnimeProvider : MainAPI() {
     }
 
 
-    private suspend fun getM3U8(epurl: String, lang: String, callback: (ExtractorLink) -> Unit):Boolean{
-        val isdub = lang == "dub"
-        val vidstream = app.get(epurl, interceptor = JsInterceptor("41", lang), timeout = 45)
-        val mcloud = app.get(epurl, interceptor = JsInterceptor("28", lang), timeout = 45)
-        val vidurl = vidstream.url
-        val murl = mcloud.url
-        val ll = listOf(vidurl, murl)
-        ll.forEach {link ->
-            val vv = link.contains("mcloud")
-            val name1 = if (vv) "Mcloud" else "Vidstream"
-            val ref = if (vv) "https://mcloud.to/" else ""
-            val name2 = if (isdub) "$name1 Dubbed" else "$name1 Subbed"
-            getStream(link, name2, ref ,callback)
-        }
-        return true
-    }
+    /*  private suspend fun getM3U8(epurl: String, lang: String, callback: (ExtractorLink) -> Unit):Boolean{
+          val isdub = lang == "dub"
+          val vidstream = app.get(epurl, interceptor = JsInterceptor("41", lang), timeout = 45)
+          val mcloud = app.get(epurl, interceptor = JsInterceptor("28", lang), timeout = 45)
+          val vidurl = vidstream.url
+          val murl = mcloud.url
+          val ll = listOf(vidurl, murl)
+          ll.forEach {link ->
+              val vv = link.contains("mcloud")
+              val name1 = if (vv) "Mcloud" else "Vidstream"
+              val ref = if (vv) "https://mcloud.to/" else ""
+              val name2 = if (isdub) "$name1 Dubbed" else "$name1 Subbed"
+              getStream(link, name2, ref ,callback)
+          }
+          return true
+      } */
 
+
+
+    data class NineConsumet (
+        @JsonProperty("headers"  ) var headers  : ServerHeaders?           = ServerHeaders(),
+        @JsonProperty("sources"  ) var sources  : ArrayList<NineConsuSources>? = arrayListOf(),
+        @JsonProperty("embedURL" ) var embedURL : String?            = null,
+
+        )
+    data class NineConsuSources (
+        @JsonProperty("url"    ) var url    : String?  = null,
+        @JsonProperty("isM3U8" ) var isM3U8 : Boolean? = null
+    )
+    data class ServerHeaders (
+
+        @JsonProperty("Referer"    ) var referer    : String? = null,
+        @JsonProperty("User-Agent" ) var userAgent : String? = null
+
+    )
     override suspend fun loadLinks(
         data: String,
         isCasting: Boolean,
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        val parsedata = parseJson<EpsInfo>(data)
-        val epurl = parsedata.epurl
-        val needDub = parsedata.needDub == true
-        if (needDub) {
-            getM3U8(epurl!!, "dub", callback)
-        }
-        if (!needDub) {
-            getM3U8(epurl!!, "sub", callback)
+        val serverlist = listOf(
+            "", //Default server
+            //"mycloud", Not active
+            "filemoon",
+            "streamtape"
+        ).reversed()
+
+        serverlist.forEach { serverId ->
+            val url = if (serverId.isEmpty()) "$consuNineAnimeApi/watch/$data" else "$consuNineAnimeApi/watch/$data?server=$serverId"
+            val json = app.get(url).parsed<NineConsumet>()
+            val embedURL = json.embedURL
+            if (serverId.contains(Regex("(?i)vizcloud|mycloud")) || serverId.isEmpty()) {
+                json.sources?.map { ss ->
+                    val link = ss.url
+                    val sourceName = if (serverId.isEmpty()) "Vidstream" else "Mcloud"
+                    val referer = json.headers?.referer ?: ""
+                    getStream(link!!, sourceName, referer, callback)
+                }
+            }
+            if (embedURL != null && serverId.contains(Regex("(?i)filemoon|streamtape"))) {
+                loadExtractor(embedURL, subtitleCallback, callback)
+            }
         }
         return true
     }

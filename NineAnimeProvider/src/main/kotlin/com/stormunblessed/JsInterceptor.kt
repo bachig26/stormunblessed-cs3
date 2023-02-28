@@ -23,7 +23,7 @@ import java.util.concurrent.TimeUnit
 //Credits https://github.com/jmir1/aniyomi-extensions/blob/master/src/en/nineanime/src/eu/kanade/tachiyomi/animeextension/en/nineanime/JsInterceptor.kt
 class JsInterceptor(private val serverid: String, private val lang:String) : Interceptor {
 
-    private val handler get() = Handler(Looper.getMainLooper())
+    private val handler by lazy { Handler(Looper.getMainLooper()) }
     class JsObject(var payload: String = "") {
         @JavascriptInterface
         fun passPayload(passedPayload: String) {

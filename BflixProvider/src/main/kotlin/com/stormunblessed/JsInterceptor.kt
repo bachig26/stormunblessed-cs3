@@ -15,10 +15,13 @@ import com.lagradost.cloudstream3.utils.Coroutines
 import com.lagradost.cloudstream3.utils.Coroutines.main
 import okhttp3.*
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+
+//Credits https://github.com/jmir1/aniyomi-extensions/blob/master/src/en/nineanime/src/eu/kanade/tachiyomi/animeextension/en/nineanime/JsInterceptor.kt
+
 class JsInterceptor(private val serverid: String) : Interceptor {
 
-    private val handler get() = Handler(Looper.getMainLooper())
-
+    private val handler by lazy { Handler(Looper.getMainLooper()) }
     class JsObject(var payload: String = "") {
         @JavascriptInterface
         fun passPayload(passedPayload: String) {
@@ -58,24 +61,13 @@ class JsInterceptor(private val serverid: String) : Interceptor {
             }
         }
 
-
         // JavaSrcipt gets the Dub or Sub link of vidstream
         val jsScript = """
-            (function(){
-                let jqclk = jQuery.Event('click');
-                jqclk.isTrusted = true;
-                jqclk.originalEvent = {
-                  isTrusted: true
-                };
-                ${'$'}('div.server[data-id="$serverid"]').trigger(jqclk);
-                let intervalId = setInterval(() => {
-                    let element = document.querySelector("#player iframe");
-                    if (element) {
-                        clearInterval(intervalId);
-                        window.android.passPayload(element.src);
-                    }
-                }, 500);
-            })();
+                (function() {
+                  var click = document.createEvent('MouseEvents');
+                  click.initMouseEvent('click', true, true);
+                  document.querySelector('div.server[data-id="$serverid"]').dispatchEvent(click);
+                })();
         """
 
         val headers = request.headers.toMultimap().mapValues { it.value.getOrNull(0) ?: "" }.toMutableMap()
@@ -124,7 +116,7 @@ class JsInterceptor(private val serverid: String) : Interceptor {
             }
         }
 
-        latch.await()
+        latch.await(30, TimeUnit.SECONDS)
 
         handler.post {
             webView?.stopLoading()
