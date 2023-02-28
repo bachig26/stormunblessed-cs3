@@ -1,11 +1,11 @@
-package com.lagradost.cloudstream3.movieproviders
+package com.stormunblessed
 
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.loadExtractor
 
 class SeriesMetroProvider: MainAPI() {
-    override var mainUrl = "https://seriesmetro.net"
+    override var mainUrl = "https://metroseries.net"
     override var name = "SeriesMetro"
     override var lang = "es"
 
@@ -41,7 +41,7 @@ class SeriesMetroProvider: MainAPI() {
             )
         }
 
-        items.add(HomePageList("Agregados Recientemente", newseries))
+        items.add(HomePageList("Agregados Recientemente", newseries, true))
 
         list.map { (name, csselement) ->
             val home = soup.select(csselement).map {
@@ -83,15 +83,16 @@ class SeriesMetroProvider: MainAPI() {
     }
 
     override suspend fun load(url: String): LoadResponse {
-        val soup = app.get(url).document
-        val title = soup.selectFirst(".main-site article .entry-title")!!.text()
-        val year = soup.selectFirst(".main-site article span.date")!!.text().toIntOrNull()
+        val soup = app.get(url, allowRedirects = false).document
+        val title = soup.selectFirst(".main-site article .entry-title")?.text() ?: ""
+        val year = soup.selectFirst(".main-site article span.date")?.text()?.toIntOrNull()
         val description = soup.select(".main-site article .entry-content > p").text().trim()
 
-        var poster = soup.selectFirst(".main-site article .post-thumbnail figure img")!!.attr("src")
-        if (poster.contains("data:image")) {
-            poster = soup.selectFirst(".main-site article .post-thumbnail figure img")!!.attr("data-lazy-src")
+        var poster = soup.selectFirst(".main-site article .post-thumbnail figure img")?.attr("src")
+        if (poster?.contains("data:image") == true) {
+            poster = soup.selectFirst(".main-site article .post-thumbnail figure img")?.attr("data-lazy-src").toString()
         }
+        val backposter = soup.selectFirst("div.TPostBg.Objf.bbg-img img.TPostBg")?.attr("src") ?: poster
         val tags = soup.select(".tagcloud a").map { it.text() }
         val datapost = soup.select(".sel-temp a").attr("data-post")
         val dataobject = soup.select("div.widget .aa-cn").attr("data-object")
@@ -100,29 +101,15 @@ class SeriesMetroProvider: MainAPI() {
         }
         val episodes = ArrayList<Episode>()
         val episs = dataseason.apmap { season ->
-            val response = app.post("$mainUrl/wp-admin/admin-ajax.php",
-                headers = mapOf(
-                    "Host" to "seriesmetro.net",
-                    "User-Agent" to USER_AGENT,
-                    "Accept" to "*/*",
-                    "Accept-Language" to "en-US,en;q=0.5",
-                    "Content-Type" to "application/x-www-form-urlencoded; charset=UTF-8",
-                    "X-Requested-With" to "XMLHttpRequest",
-                    "Origin" to "https://seriesmetro.net",
-                    "DNT" to "1",
-                    "Alt-Used" to "seriesmetro.net",
-                    "Connection" to "keep-alive",
-                    "Referer" to url,
-                    "Sec-Fetch-Dest" to "empty",
-                    "Sec-Fetch-Mode" to "cors",
-                    "Sec-Fetch-Site" to "same-origin",),
-                data = mapOf(
-                    Pair("action","action_select_season"),
-                    Pair("season",season),
-                    Pair("post",datapost),
-                    Pair("object",dataobject))
+            val response = app.post("$mainUrl/wp-admin/admin-ajax.php", data =
+            mapOf(
+                "action" to "action_select_season",
+                "season" to season,
+                "post" to datapost,
+                "object" to dataobject
+            )
             ).document
-            val a = response.select("#episode_by_temp > li > a").map {
+            response.select("#episode_by_temp > li > a").map {
                 val link = it.attr("href")
                 val aa = link.replace("-capitulo-","x")
                 val regexseasonepnum = Regex("((\\d+)x(\\d+))")
@@ -164,8 +151,9 @@ class SeriesMetroProvider: MainAPI() {
 
         return  newTvSeriesLoadResponse(title,
             url, TvType.TvSeries, episodes,){
-            this.posterUrl = fixUrl(poster)
+            this.posterUrl = fixUrl(poster ?: "")
             this.plot = description
+            this.backgroundPosterUrl = fixUrl(backposter ?: "")
             this.year = year
             this.tags = tags
             this.recommendations = recommendations
@@ -184,15 +172,11 @@ class SeriesMetroProvider: MainAPI() {
         dataop.apmap { serverid ->
             val response = app.post("$mainUrl/wp-admin/admin-ajax.php",
                 headers = mapOf(
-                    "Host" to "seriesmetro.net",
                     "User-Agent" to USER_AGENT,
                     "Accept" to "*/*",
                     "Accept-Language" to "en-US,en;q=0.5",
-                    "Content-Type" to "application/x-www-form-urlencoded; charset=UTF-8",
                     "X-Requested-With" to "XMLHttpRequest",
-                    "Origin" to "https://seriesmetro.net",
                     "DNT" to "1",
-                    "Alt-Used" to "seriesmetro.net",
                     "Connection" to "keep-alive",
                     "Referer" to data,
                     "Sec-Fetch-Dest" to "empty",

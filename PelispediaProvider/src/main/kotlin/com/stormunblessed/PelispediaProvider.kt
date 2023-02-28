@@ -1,6 +1,7 @@
-package com.lagradost.cloudstream3.movieproviders
+package com.stormunblessed
 
 import com.lagradost.cloudstream3.*
+import com.lagradost.cloudstream3.LoadResponse.Companion.addDuration
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.loadExtractor
 
@@ -28,8 +29,8 @@ class PelispediaProvider:MainAPI() {
             val doc = app.get(url).document
             val home =  doc.select("section.movies article").map {
                 val title = it.selectFirst("h2.entry-title")?.text() ?: ""
-                val img = it.selectFirst("img")!!.attr("data-src")
-                val link = it.selectFirst("a.lnk-blk")!!.attr("href")
+                val img = it.selectFirst("img")?.attr("src") ?: ""
+                val link = it.selectFirst("a.lnk-blk")?.attr("href") ?: ""
                 TvSeriesSearchResponse(
                     title,
                     link,
@@ -68,11 +69,13 @@ class PelispediaProvider:MainAPI() {
     override suspend fun load(url: String): LoadResponse? {
         val doc = app.get(url).document
         val tvType = if (url.contains("pelicula")) TvType.Movie else TvType.TvSeries
-        val poster = doc.selectFirst(".alg-ss img")!!.attr("data-src").replace(Regex("\\/p\\/w\\d+.*\\/"),"/p/original/")
-        val backimage = doc.selectFirst(".bghd  img")!!.attr("data-src")
-        val title = doc.selectFirst("h1.entry-title")!!.text()
-        val plot = doc.selectFirst(".description > p")!!.text()
+        val poster = doc.selectFirst(".alg-ss img")?.attr("src")?.replace(Regex("\\/p\\/w\\d+.*\\/"),"/p/original/") ?: ""
+        val backimage = doc.selectFirst(".bghd  img")?.attr("src")?.replace(Regex("\\/p\\/w\\d+.*\\/"),"/p/original/") ?: poster
+        val title = doc.selectFirst("h1.entry-title")?.text() ?: ""
+        val plot = doc.selectFirst(".description > p:nth-child(2)")?.text() ?: doc.selectFirst(".description > p")?.text()
         val tags = doc.select("span.genres a").map { it.text() }
+        val yearrr = doc.selectFirst("span.year.fa-calendar.far")?.text()?.toIntOrNull()
+        val duration = doc.selectFirst("span.duration.fa-clock.far")?.text()
         val seasonsdoc = doc.select("div.choose-season li a").map {
             val seriesid = it.attr("data-post")
             val dataseason = it.attr("data-season")
@@ -106,6 +109,17 @@ class PelispediaProvider:MainAPI() {
                 ))
             }
         }
+
+        val recs = doc.select("article.movies").mapNotNull { rec ->
+            val recTitle = rec.selectFirst(".entry-title")?.text() ?: ""
+            val recImg = rec.selectFirst("img")?.attr("src") ?: ""
+            val recLink = rec.selectFirst("a")?.attr("href") ?: ""
+            newTvSeriesSearchResponse(recTitle, recLink, TvType.TvSeries) {
+                this.posterUrl = fixUrl(recImg)
+            }
+        }
+
+
         return when (tvType) {
             TvType.TvSeries -> {
                 newTvSeriesLoadResponse(title,
@@ -114,6 +128,9 @@ class PelispediaProvider:MainAPI() {
                     this.backgroundPosterUrl = fixUrl(backimage)
                     this.plot = plot
                     this.tags = tags
+                    this.year = yearrr
+                    this.recommendations = recs
+                    addDuration(duration)
                 }
             }
             TvType.Movie -> {
@@ -122,6 +139,9 @@ class PelispediaProvider:MainAPI() {
                     this.backgroundPosterUrl = fixUrl(backimage)
                     this.plot = plot
                     this.tags = tags
+                    this.year = yearrr
+                    this.recommendations = recs
+                    addDuration(duration)
                 }
             }
             else -> null
