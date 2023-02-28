@@ -9,10 +9,10 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import android.widget.Toast
 import com.lagradost.cloudstream3.AcraApplication.Companion.context
 import com.lagradost.cloudstream3.utils.Coroutines
 import com.lagradost.cloudstream3.utils.Coroutines.main
+import kotlinx.coroutines.runBlocking
 import okhttp3.*
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -30,15 +30,11 @@ class JsInterceptor(private val serverid: String) : Interceptor {
     }
 
     override fun intercept(chain: Interceptor.Chain): Response {
-
-        val mess = if (serverid == "41") "Vidstream" else if (serverid == "28") "Mcloud" else ""
-        val originalRequest = chain.request()
-        handler.post {
-            context.let { Toast.makeText(it, "Getting $mess link, please wait", Toast.LENGTH_LONG).show() }
+        val request = chain.request()
+        return runBlocking {
+            val fixedRequest = resolveWithWebView(request)
+            return@runBlocking chain.proceed(fixedRequest ?: request)
         }
-        val newRequest = resolveWithWebView(originalRequest) ?: throw Exception("Someting went wrong")
-
-        return chain.proceed(newRequest)
     }
 
 
@@ -116,13 +112,13 @@ class JsInterceptor(private val serverid: String) : Interceptor {
             }
         }
 
-        latch.await(30, TimeUnit.SECONDS)
+        latch.await(45, TimeUnit.SECONDS)
 
         handler.post {
             webView?.stopLoading()
             webView?.destroy()
             webView = null
-            context.let { Toast.makeText(it, "Success!", Toast.LENGTH_SHORT).show()}
+           // context.let { Toast.makeText(it, "Success!", Toast.LENGTH_SHORT).show()}
         }
         var loop = 0
         val totalTime = 60000L
