@@ -31,7 +31,7 @@ fun Project.cloudstream(configuration: CloudstreamExtension.() -> Unit) =
 fun Project.android(configuration: BaseExtension.() -> Unit) =
     extensions.getByName<BaseExtension>("android").configuration()
 
-subprojects {
+@Suppress("ExpiredTargetSdkVersion") subprojects {
     apply(plugin = "com.android.library")
     apply(plugin = "kotlin-android")
     apply(plugin = "com.lagradost.cloudstream3.gradle")
@@ -44,11 +44,11 @@ subprojects {
     }
 
     android {
-        compileSdkVersion(33)
+        compileSdkVersion(30)
 
         defaultConfig {
             minSdk = 21
-            targetSdk = 33
+            targetSdk = 30
         }
 
         compileOptions {
