@@ -17,7 +17,7 @@ import okhttp3.*
 import java.util.concurrent.CountDownLatch
 class JsInterceptor(private val serverid: String) : Interceptor {
 
-    private val handler by lazy { Handler(Looper.getMainLooper()) }
+    private val handler get() = Handler(Looper.getMainLooper())
 
     class JsObject(var payload: String = "") {
         @JavascriptInterface

@@ -19,7 +19,7 @@ class NineAnimeProvider : MainAPI() {
     override val supportedTypes = setOf(TvType.Anime)
     override val hasQuickSearch = true
 
-    private val vrfInterceptor by lazy { JsVrfInterceptor(mainUrl) }
+    private val vrfInterceptor get() =  JsVrfInterceptor(mainUrl)
     companion object {
         fun encode(input: String): String =
             java.net.URLEncoder.encode(input, "utf-8").replace("+", "%2B")
