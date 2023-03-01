@@ -25,6 +25,7 @@ class SeriesMetroProvider: MainAPI() {
             Pair("Series Populares", ".serie.sm")
         )
 
+        /*
         val newseries = soup.select(".section.episodes article").map {
             val title = it.selectFirst(".entry-header .tvshow")!!.text()
             val poster = it.selectFirst(".post-thumbnail figure img")!!.attr("src")
@@ -42,6 +43,7 @@ class SeriesMetroProvider: MainAPI() {
         }
 
         items.add(HomePageList("Agregados Recientemente", newseries, true))
+        */
 
         list.map { (name, csselement) ->
             val home = soup.select(csselement).map {
