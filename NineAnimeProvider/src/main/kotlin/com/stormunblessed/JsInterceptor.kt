@@ -9,12 +9,12 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import android.widget.Toast
 import com.lagradost.cloudstream3.AcraApplication.Companion.context
 import com.lagradost.cloudstream3.USER_AGENT
 import com.lagradost.cloudstream3.utils.Coroutines
 import com.lagradost.cloudstream3.utils.Coroutines.main
 import com.lagradost.nicehttp.requestCreator
+import com.stormunblessed.NineAnimeProviderPlugin.Companion.postFunction
 import kotlinx.coroutines.runBlocking
 import okhttp3.*
 import java.util.concurrent.CountDownLatch
@@ -22,7 +22,7 @@ import java.util.concurrent.TimeUnit
 
 
 //Credits https://github.com/jmir1/aniyomi-extensions/blob/master/src/en/nineanime/src/eu/kanade/tachiyomi/animeextension/en/nineanime/JsInterceptor.kt
-class JsInterceptor(private val serverid: String, private val lang:String) : Interceptor {
+class JsInterceptor(private val serverid: String, private val lang: String) : Interceptor {
 
     private val handler by lazy { Handler(Looper.getMainLooper()) }
     class JsObject(var payload: String = "") {
@@ -71,7 +71,7 @@ class JsInterceptor(private val serverid: String, private val lang:String) : Int
 
         var newRequest: Request? = null
 
-        handler.post {
+        handler.postFunction {
             val webview = WebView(context!!)
             webView = webview
             with(webview.settings) {
@@ -84,7 +84,6 @@ class JsInterceptor(private val serverid: String, private val lang:String) : Int
                 blockNetworkImage = true
                 webview.webViewClient = object : WebViewClient() {
                     override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
-
                         if (serverid == "41") {
                             if (!request?.url.toString().contains("vidstream") &&
                                 !request?.url.toString().contains("vizcloud")
@@ -111,7 +110,7 @@ class JsInterceptor(private val serverid: String, private val lang:String) : Int
         }
 
         latch.await(30, TimeUnit.SECONDS)
-        handler.post {
+        handler.postFunction {
             webView?.stopLoading()
             webView?.destroy()
             webView = null
