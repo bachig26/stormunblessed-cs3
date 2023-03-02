@@ -7,6 +7,7 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import com.lagradost.cloudstream3.AcraApplication.Companion.context
+import com.stormunblessed.NineAnimeProviderPlugin.Companion.postFunction
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
@@ -24,7 +25,7 @@ class JsVrfInterceptor(private val baseUrl: String) {
         val jscript = getJs(query)
         val cdl = CountDownLatch(1)
         var vrf = ""
-        handler.post {
+        handler.postFunction {
             vrfWebView?.evaluateJavascript(jscript) {
                 vrf = it?.removeSurrounding("\"") ?: ""
                 cdl.countDown()
@@ -40,7 +41,7 @@ class JsVrfInterceptor(private val baseUrl: String) {
         val latch = CountDownLatch(1)
         var webView: WebView? = null
 
-        handler.post {
+        handler.postFunction {
             val webview = WebView(context!!)
             webView = webview
             with(webview.settings) {
@@ -70,7 +71,7 @@ class JsVrfInterceptor(private val baseUrl: String) {
 
         latch.await()
 
-        handler.post {
+        handler.postFunction {
             webView?.stopLoading()
         }
         return webView

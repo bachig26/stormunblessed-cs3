@@ -13,6 +13,7 @@ import com.lagradost.cloudstream3.AcraApplication.Companion.context
 import com.lagradost.cloudstream3.utils.Coroutines
 import com.lagradost.cloudstream3.utils.Coroutines.main
 import com.lagradost.nicehttp.requestCreator
+import com.stormunblessed.BflixProviderPlugin.Companion.postFunction
 import kotlinx.coroutines.runBlocking
 import okhttp3.*
 import java.util.concurrent.CountDownLatch
@@ -71,7 +72,7 @@ class JsInterceptor(private val serverid: String) : Interceptor {
 
         var newRequest: Request? = null
 
-        handler.post {
+        handler.postFunction {
             val webview = WebView(context!!)
             webView = webview
             with(webview.settings) {
@@ -112,7 +113,7 @@ class JsInterceptor(private val serverid: String) : Interceptor {
 
         latch.await(45, TimeUnit.SECONDS)
 
-        handler.post {
+        handler.postFunction {
             webView?.stopLoading()
             webView?.destroy()
             webView = null
