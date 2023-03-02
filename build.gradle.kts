@@ -39,7 +39,6 @@ fun Project.android(configuration: BaseExtension.() -> Unit) =
     cloudstream {
         // when running through github workflow, GITHUB_REPOSITORY should contain current repository name
         setRepo(System.getenv("GITHUB_REPOSITORY") ?: "https://github.com/Stormunblessed/stormunblessed-cs3")
-
         authors = listOf("Stormunblessed")
     }
 
