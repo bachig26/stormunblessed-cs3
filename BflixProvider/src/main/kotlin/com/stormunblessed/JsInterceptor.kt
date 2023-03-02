@@ -12,6 +12,7 @@ import android.webkit.WebViewClient
 import com.lagradost.cloudstream3.AcraApplication.Companion.context
 import com.lagradost.cloudstream3.utils.Coroutines
 import com.lagradost.cloudstream3.utils.Coroutines.main
+import com.lagradost.nicehttp.requestCreator
 import kotlinx.coroutines.runBlocking
 import okhttp3.*
 import java.util.concurrent.CountDownLatch
@@ -95,10 +96,7 @@ class JsInterceptor(private val serverid: String) : Interceptor {
                         }
 
                         if (request?.url.toString().contains(Regex("list.m3u8|/simple/"))) {
-                            newRequest = JsGET(
-                                request?.url.toString(),
-                                Headers.headersOf("referer", "/orp.maertsdiv//:sptth".reversed())
-                            )
+                            newRequest = requestCreator("GET", request?.url.toString(), headers = mapOf("referer" to "/orp.maertsdiv//:sptth".reversed()))
                             latch.countDown()
                             return null
                         }
