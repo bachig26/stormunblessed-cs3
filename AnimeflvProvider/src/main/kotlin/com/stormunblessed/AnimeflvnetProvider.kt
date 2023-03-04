@@ -1,4 +1,4 @@
-package com.lagradost.cloudstream3.animeproviders
+package com.stormunblessed
 
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.lagradost.cloudstream3.*
@@ -28,6 +28,7 @@ class AnimeflvnetProvider : MainAPI() {
     override val hasMainPage = true
     override val hasChromecastSupport = true
     override val hasDownloadSupport = true
+    override val hasQuickSearch = true
     override val supportedTypes = setOf(
         TvType.AnimeMovie,
         TvType.OVA,
@@ -41,7 +42,7 @@ class AnimeflvnetProvider : MainAPI() {
             Pair("$mainUrl/browse?status[]=1&order=rating", "En emision"),
         )
         val items = ArrayList<HomePageList>()
-        var isHorizontal = true
+        val isHorizontal = true
         items.add(
             HomePageList(
                 "Últimos episodios",
@@ -59,25 +60,22 @@ class AnimeflvnetProvider : MainAPI() {
                     }
                 }, isHorizontal)
         )
-        for ((url, name) in urls) {
-            try {
-                val doc = app.get(url).document
-                val home = doc.select("ul.ListAnimes li article").mapNotNull {
-                    val title = it.selectFirst("h3.Title")?.text() ?: return@mapNotNull null
-                    val poster = it.selectFirst("figure img")?.attr("src") ?: return@mapNotNull null
-                    newAnimeSearchResponse(
-                        title,
-                        fixUrl(it.selectFirst("a")?.attr("href") ?: return@mapNotNull null)
-                    ) {
-                        this.posterUrl = fixUrl(poster)
-                        addDubStatus(getDubStatus(title))
-                    }
-                }
 
-                items.add(HomePageList(name, home))
-            } catch (e: Exception) {
-                e.printStackTrace()
+        urls.apmap { (url, name) ->
+            val doc = app.get(url).document
+            val home = doc.select("ul.ListAnimes li article").mapNotNull {
+                val title = it.selectFirst("h3.Title")?.text() ?: return@mapNotNull null
+                val poster = it.selectFirst("figure img")?.attr("src") ?: return@mapNotNull null
+                newAnimeSearchResponse(
+                    title,
+                    fixUrl(it.selectFirst("a")?.attr("href") ?: return@mapNotNull null)
+                ) {
+                    this.posterUrl = fixUrl(poster)
+                    addDubStatus(getDubStatus(title))
+                }
             }
+
+            items.add(HomePageList(name, home))
         }
         if (items.size <= 0) throw ErrorLoadingException()
         return HomePageResponse(items)
@@ -91,7 +89,7 @@ class AnimeflvnetProvider : MainAPI() {
         @JsonProperty("slug") val slug: String
     )
 
-    override suspend fun search(query: String): List<SearchResponse> {
+    override suspend fun quickSearch(query: String): List<SearchResponse> {
         val response = app.post(
             "https://www3.animeflv.net/api/animes/search",
             data = mapOf(Pair("value", query))
@@ -101,18 +99,24 @@ class AnimeflvnetProvider : MainAPI() {
             val title = searchr.title
             val href = "$mainUrl/anime/${searchr.slug}"
             val image = "$mainUrl/uploads/animes/covers/${searchr.id}.jpg"
-            AnimeSearchResponse(
-                title,
-                href,
-                this.name,
-                TvType.Anime,
-                fixUrl(image),
-                null,
-                if (title.contains("Latino") || title.contains("Castellano")) EnumSet.of(DubStatus.Dubbed) else EnumSet.of(
-                    DubStatus.Subbed
-                ),
-            )
+            newAnimeSearchResponse(title, href) {
+                this.posterUrl = fixUrl(image)
+                addDubStatus(getDubStatus(title))
+            }
         }
+    }
+    override suspend fun search(query: String): List<SearchResponse> {
+        val doc = app.get("$mainUrl/browse?q=$query").document
+        val sss = doc.select("ul.ListAnimes article").map { ll ->
+            val title = ll.selectFirst("h3")?.text() ?: ""
+            val image = ll.selectFirst("figure img")?.attr("src") ?: ""
+            val href = ll.selectFirst("a")?.attr("href") ?: ""
+            newAnimeSearchResponse(title, href){
+                this.posterUrl = image
+                addDubStatus(getDubStatus(title))
+            }
+        }
+        return sss
     }
 
     override suspend fun load(url: String): LoadResponse {
@@ -134,6 +138,7 @@ class AnimeflvnetProvider : MainAPI() {
             if (script.data().contains("var episodes = [")) {
                 val data = script.data().substringAfter("var episodes = [").substringBefore("];")
                 data.split("],").forEach {
+
                     val epNum = it.removePrefix("[").substringBefore(",")
                     // val epthumbid = it.removePrefix("[").substringAfter(",").substringBefore("]")
                     val animeid = doc.selectFirst("div.Strs.RateIt")?.attr("data-id")

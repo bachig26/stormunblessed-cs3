@@ -1,4 +1,4 @@
-package com.lagradost.cloudstream3.animeproviders
+package com.stormunblessed
 
 
 import com.fasterxml.jackson.annotation.JsonProperty
@@ -9,6 +9,7 @@ import com.lagradost.cloudstream3.utils.M3u8Helper.Companion.generateM3u8
 import com.lagradost.cloudstream3.utils.getQualityFromName
 import com.lagradost.cloudstream3.utils.loadExtractor
 import java.util.*
+import kotlin.collections.ArrayList
 
 
 class JKAnimeProvider : MainAPI() {
@@ -93,52 +94,54 @@ class JKAnimeProvider : MainAPI() {
         return HomePageResponse(items)
     }
 
-    data class MainSearch(
-        @JsonProperty("animes") val animes: List<Animes>,
-        @JsonProperty("anime_types") val animeTypes: AnimeTypes
-    )
+    /* data class MainSearch(
+         @JsonProperty("animes") val animes: List<Animes>,
+         @JsonProperty("anime_types") val animeTypes: AnimeTypes
+     )
 
-    data class Animes(
-        @JsonProperty("id") val id: String,
-        @JsonProperty("slug") val slug: String,
-        @JsonProperty("title") val title: String,
-        @JsonProperty("image") val image: String,
-        @JsonProperty("synopsis") val synopsis: String,
-        @JsonProperty("type") val type: String,
-        @JsonProperty("status") val status: String,
-        @JsonProperty("thumbnail") val thumbnail: String
-    )
+     data class Animes(
+         @JsonProperty("id") val id: String,
+         @JsonProperty("slug") val slug: String,
+         @JsonProperty("title") val title: String,
+         @JsonProperty("image") val image: String,
+         @JsonProperty("synopsis") val synopsis: String,
+         @JsonProperty("type") val type: String,
+         @JsonProperty("status") val status: String,
+         @JsonProperty("thumbnail") val thumbnail: String
+     )
 
-    data class AnimeTypes(
-        @JsonProperty("TV") val TV: String,
-        @JsonProperty("OVA") val OVA: String,
-        @JsonProperty("Movie") val Movie: String,
-        @JsonProperty("Special") val Special: String,
-        @JsonProperty("ONA") val ONA: String,
-        @JsonProperty("Music") val Music: String
-    )
+     data class AnimeTypes(
+         @JsonProperty("TV") val TV: String,
+         @JsonProperty("OVA") val OVA: String,
+         @JsonProperty("Movie") val Movie: String,
+         @JsonProperty("Special") val Special: String,
+         @JsonProperty("ONA") val ONA: String,
+         @JsonProperty("Music") val Music: String
+     ) */
 
     override suspend fun search(query: String): List<SearchResponse> {
-        val main = app.get("$mainUrl/ajax/ajax_search/?q=$query").text
-        val json = parseJson<MainSearch>(main)
-        return json.animes.map {
-            val title = it.title
-            val href = "$mainUrl/${it.slug}"
-            val image = "https://cdn.jkanime.net/assets/images/animes/image/${it.slug}.jpg"
-            AnimeSearchResponse(
-                title,
-                href,
-                this.name,
-                TvType.Anime,
-                image,
-                null,
-                if (title.contains("Latino") || title.contains("Castellano")) EnumSet.of(
-                    DubStatus.Dubbed
-                ) else EnumSet.of(DubStatus.Subbed),
-            )
+        val urls = listOf(
+            "$mainUrl/buscar/$query/1/",
+            "$mainUrl/buscar/$query/2/",
+            "$mainUrl/buscar/$query/3/"
+        )
+        val search = ArrayList<SearchResponse>()
+        urls.apmap { ss ->
+            val doc = app.get(ss).document
+            doc.select("div.row div.anime__item").mapNotNull {
+                val title = it.selectFirst(".title")?.text() ?: ""
+                val href = it.selectFirst("a")?.attr("href") ?: ""
+                val img = it.selectFirst(".set-bg")?.attr("data-setbg") ?: ""
+                val isDub = title.contains("Latino") || title.contains("Castellano")
+                search.add(
+                    newAnimeSearchResponse(title, href) {
+                        this.posterUrl = fixUrl(img)
+                        addDubStatus(isDub, !isDub)
+                    })
+            }
         }
+        return search
     }
-
 
     data class EpsInfo (
         @JsonProperty("number" ) var number : String? = null,
@@ -212,7 +215,7 @@ class JKAnimeProvider : MainAPI() {
     }
 
 
-    fun fetchjkanime(text: String?): List<String> {
+    private fun fetchjkanime(text: String?): List<String> {
         if (text.isNullOrEmpty()) {
             return listOf()
         }
