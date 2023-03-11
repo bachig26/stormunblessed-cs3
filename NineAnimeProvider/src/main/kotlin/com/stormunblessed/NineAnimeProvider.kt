@@ -233,18 +233,24 @@ class NineAnimeProvider : MainAPI() {
         return app.get("$mainUrl/ajax/server/$id?vrf=encodeVrf(id, cipherKey)}").parsedSafe()
     }*/
 
-    private suspend fun getStream(
-        streamLink: String,
-        name: String,
-        referer: String,
-        callback: (ExtractorLink) -> Unit
-    )  {
-        return generateM3u8(
-            name,
-            streamLink,
-            referer
-        ).forEach(callback)
-    }
+    /*   private suspend fun getStream(
+           streamLink: String,
+           name: String,
+           referer: String,
+           callback: (ExtractorLink) -> Unit
+       )  {
+           return generateM3u8(
+               name,
+               streamLink,
+               referer
+           ).map {
+               callback(
+                   ExtractorLink(
+                       ""
+                   )
+               )
+           }
+       } */
 
 
     /*  private suspend fun getM3U8(epurl: String, lang: String, callback: (ExtractorLink) -> Unit):Boolean{
@@ -303,8 +309,31 @@ class NineAnimeProvider : MainAPI() {
                 json.sources?.map { ss ->
                     val link = ss.url
                     val sourceName = if (serverId.isEmpty()) "Vidstream" else "Mcloud"
-                    val referer = json.headers?.referer ?: ""
-                    getStream(link!!, sourceName, referer, callback)
+                    //getStream(link!!, sourceName, "https://vidstream.pro/", callback)
+                    val ref = "https://vidstream.pro/"
+                    if (link != null) {
+                        generateM3u8(
+                            sourceName,
+                            link,
+                            ref
+                        ).apmap {
+                            val newQ = if (it.url.contains("/H4")) "1080"
+                            else if (it.url.contains("/H3")) "720"
+                            else if (it.url.contains("/H2")) "480"
+                            else if (it.url.contains("/H1")) "360"
+                            else "Auto"
+                            callback(
+                                ExtractorLink(
+                                    sourceName,
+                                    sourceName,
+                                    it.url,
+                                    ref,
+                                    getQualityFromName(newQ),
+                                    true
+                                )
+                            )
+                        }
+                    }
                 }
             }
             if (embedURL != null && serverId.contains(Regex("(?i)filemoon|streamtape"))) {
