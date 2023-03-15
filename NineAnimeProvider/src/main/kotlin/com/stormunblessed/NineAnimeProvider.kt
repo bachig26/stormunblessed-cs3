@@ -146,7 +146,7 @@ class NineAnimeProvider : MainAPI() {
             ?: throw ErrorLoadingException("Could not find title")
         val vrf = encode(consumetVrf(id))
 
-        val episodeListUrl = "$mainUrl/ajax/episode/list/$id?vrf=${vrf}"
+        val episodeListUrl = "$mainUrl/ajax/episode/list/$id?vrf250=${vrf}"
         val body =
             app.get(episodeListUrl).parsedSafe<Response>()?.html
                 ?: throw ErrorLoadingException("Could not parse json with Vrf=$vrf id=$id url=\n$episodeListUrl")
@@ -175,7 +175,6 @@ class NineAnimeProvider : MainAPI() {
             else -> TvType.Anime
         }
         val duration = doc.selectFirst(".bmeta > div > div:contains(Duration:) > span")?.text()
-        println("DURATION $duration")
 
         Jsoup.parse(body).body().select(".episodes > ul > li > a").apmap { element ->
             val ids = element.attr("data-ids").split(",", limit = 2)
@@ -312,7 +311,7 @@ class NineAnimeProvider : MainAPI() {
     }
     private suspend fun decUrlConsu(serverID: String):String {
         val encID = consumetVrf(serverID)
-        val videncrr = app.get("$mainUrl/ajax/server/$serverID?vrf=${encode(encID)}").parsed<Links>()
+        val videncrr = app.get("$mainUrl/ajax/server/$serverID?vrf250=${encode(encID)}").parsed<Links>()
         val encUrl = videncrr.result?.url
         val ses = app.get("https://api.consumet.org/anime/9anime/helper?query=$encUrl&action=decrypt").text
         return ses.substringAfter("vrf\":\"").substringBefore("\"")
@@ -325,7 +324,7 @@ class NineAnimeProvider : MainAPI() {
     ): Boolean {
         val parseData = AppUtils.parseJson<SubDubInfo>(data)
         val datavrf = consumetVrf(parseData.ID)
-        val one = app.get("$mainUrl/ajax/server/list/${parseData.ID}?vrf=${encode(datavrf)}").parsed<Response>()
+        val one = app.get("$mainUrl/ajax/server/list/${parseData.ID}?vrf250=${encode(datavrf)}").parsed<Response>()
         val two = Jsoup.parse(one.html ?: return false)
         val aas = two.select("div.servers .type[data-type=${parseData.type}] li").mapNotNull {
             val datalinkId = it.attr("data-link-id")
@@ -336,7 +335,7 @@ class NineAnimeProvider : MainAPI() {
         aas.apmap { (sName, sId) ->
             if (sName == "vidstream") {
                 val encID = consumetVrf(sId)
-                val videncrr = app.get("$mainUrl/ajax/server/$sId?vrf=${encode(encID)}").parsed<Links>()
+                val videncrr = app.get("$mainUrl/ajax/server/$sId?vrf250=${encode(encID)}").parsed<Links>()
                 val encUrl = videncrr.result?.url
                 if (encUrl != null) {
                     val asss = decUrlConsu(sId)
