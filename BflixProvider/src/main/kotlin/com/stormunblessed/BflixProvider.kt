@@ -6,6 +6,7 @@ import com.lagradost.cloudstream3.LoadResponse.Companion.addDuration
 import com.lagradost.cloudstream3.utils.AppUtils.parseJson
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.M3u8Helper
+import com.lagradost.cloudstream3.utils.getQualityFromName
 import com.lagradost.cloudstream3.utils.loadExtractor
 import org.jsoup.Jsoup
 
@@ -395,6 +396,7 @@ open class BflixProvider : MainAPI() {
                             .attr("data-ep")
                 val jsonservers = parseJson<Servers?>(servers) ?: return@map
                 listOfNotNull(
+                    jsonservers.vidstream,
                     jsonservers.streamtape,
                     jsonservers.filemoon,
                 ).map {
@@ -402,7 +404,33 @@ open class BflixProvider : MainAPI() {
                     if (epserver.contains("url")) {
                         val serversJson = parseJson<Links>(epserver)
                         val links = decode(decodeVrf(serversJson.url, mainKey))
-                        loadExtractor(links, subtitleCallback, callback)
+                        if (links.contains("vidstream")) {
+                            val regex = Regex("(.+?/)e(?:mbed)?/([a-zA-Z0-9]+)")
+                            val group = regex.find(links)!!.groupValues
+                            val vizId = group[2]
+                            val ssae = app.get("https://api.consumet.org/anime/9anime/helper?query=$vizId&action=vizcloud").text
+                            val reg2 = Regex("((https|http).*list.*(m3u8|.mp4))")
+                            val m3u8 = reg2.find(ssae)?.destructured?.component1() ?: ""
+                            val ref = "https://vidstream.pro/"
+                            M3u8Helper.generateM3u8(
+                                "Vidstream",
+                                m3u8.replace("#.mp4", ""),
+                                ref
+                            ).apmap {
+                                callback(
+                                    ExtractorLink(
+                                        "Vidstream",
+                                        "Vidstream",
+                                        it.url,
+                                        ref,
+                                        getQualityFromName(it.quality.toString()),
+                                        true
+                                    )
+                                )
+                            }
+                        } else {
+                            loadExtractor(links, subtitleCallback, callback)
+                        }
                     }
                 }
                 //Apparently any server works, I haven't found any diference
@@ -415,18 +443,6 @@ open class BflixProvider : MainAPI() {
                     )
                 }
             }
-
-        val vidstream = app.get(data, interceptor = JsInterceptor("41"))
-        val mcloud = app.get(data, interceptor = JsInterceptor("28"))
-        val vidsurl = vidstream.url
-        val murl = mcloud.url
-        val lll = listOf(vidsurl, murl)
-        lll.apmap {  link->
-            val vv = link.contains("mcloud")
-            val name = if (vv) "Mcloud" else "Vidstream"
-            val ref = if (vv) "https://mcloud.to/" else ""
-            getStream(link, name, ref, callback)
-        }
 
         return true
     }
