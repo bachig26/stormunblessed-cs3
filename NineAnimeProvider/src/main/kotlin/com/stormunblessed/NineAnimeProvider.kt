@@ -144,7 +144,7 @@ class NineAnimeProvider : MainAPI() {
         val backposter = backimgRegx.find(backimginfo.toString())?.value ?: poster
         val title = (info.selectFirst(".title") ?: info.selectFirst(".d-title"))?.text()
             ?: throw ErrorLoadingException("Could not find title")
-        val vrf = encode(vrfInterceptor.getVrf(id))
+        val vrf = encode(consumetVrf(id))
 
         val episodeListUrl = "$mainUrl/ajax/episode/list/$id?vrf=${vrf}"
         val body =
@@ -185,18 +185,20 @@ class NineAnimeProvider : MainAPI() {
             val epTitle = element.selectFirst("span.d-title")?.text()
             //val filler = element.hasClass("filler")
             ids.getOrNull(1)?.let { dub ->
+                val epdd = "{\"ID\":\"$dub\",\"type\":\"dub\"}"
                 dubEpisodes.add(
                     Episode(
-                        dub,
+                        epdd,
                         epTitle,
                         episode = epNum
                     )
                 )
             }
             ids.getOrNull(0)?.let { sub ->
+                val epdd = "{\"ID\":\"$sub\",\"type\":\"sub\"}"
                 subEpisodes.add(
                     Episode(
-                        sub,
+                        epdd,
                         epTitle,
                         episode = epNum
                     )
@@ -288,56 +290,85 @@ class NineAnimeProvider : MainAPI() {
         @JsonProperty("User-Agent" ) var userAgent : String? = null
 
     )
+    data class SubDubInfo (
+        @JsonProperty("ID"   ) val ID   : String,
+        @JsonProperty("type" ) val type : String
+    )
+
+    private fun serverName(serverID: String?): String? {
+        val sss =
+            when (serverID) {
+                "41" -> "vidstream"
+                "44" -> "filemoon"
+                "40" -> "streamtape"
+                "35" -> "mp4upload"
+                else -> null
+            }
+        return sss
+    }
+    private suspend fun consumetVrf(input: String): String{
+        val consuRes = app.get("https://api.consumet.org/anime/9anime/helper?query=$input&action=vrf").text
+        return consuRes.substringAfter("vrf\":\"").substringBefore("\"")
+    }
+    private suspend fun decUrlConsu(serverID: String):String {
+        val encID = consumetVrf(serverID)
+        val videncrr = app.get("$mainUrl/ajax/server/$serverID?vrf=${encode(encID)}").parsed<Links>()
+        val encUrl = videncrr.result?.url
+        val ses = app.get("https://api.consumet.org/anime/9anime/helper?query=$encUrl&action=decrypt").text
+        return ses.substringAfter("vrf\":\"").substringBefore("\"")
+    }
     override suspend fun loadLinks(
         data: String,
         isCasting: Boolean,
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        val serverlist = listOf(
-            "", //Default server
-            //"mycloud", Not active
-            "filemoon",
-            "streamtape"
-        ).reversed()
+        val parseData = AppUtils.parseJson<SubDubInfo>(data)
+        val datavrf = consumetVrf(parseData.ID)
+        val one = app.get("$mainUrl/ajax/server/list/${parseData.ID}?vrf=${encode(datavrf)}").parsed<Response>()
+        val two = Jsoup.parse(one.html ?: return false)
+        val aas = two.select("div.servers .type[data-type=${parseData.type}] li").mapNotNull {
+            val datalinkId = it.attr("data-link-id")
+            val serverID = it.attr("data-sv-id").toString()
+            val newSname = serverName(serverID)
+            Pair(newSname, datalinkId)
+        }
+        aas.apmap { (sName, sId) ->
+            if (sName == "vidstream") {
+                val encID = consumetVrf(sId)
+                val videncrr = app.get("$mainUrl/ajax/server/$sId?vrf=${encode(encID)}").parsed<Links>()
+                val encUrl = videncrr.result?.url
+                if (encUrl != null) {
+                    val asss = decUrlConsu(sId)
+                    val regex = Regex("(.+?/)e(?:mbed)?/([a-zA-Z0-9]+)")
+                    val group = regex.find(asss)!!.groupValues
+                    val vizId = group[2]
+                    val ssae = app.get("https://api.consumet.org/anime/9anime/helper?query=$vizId&action=vizcloud").text
+                    val reg2 = Regex("((https|http).*list.*(m3u8|.mp4))")
+                    val m3u8 = reg2.find(ssae)?.destructured?.component1() ?: ""
 
-        serverlist.forEach { serverId ->
-            val url = if (serverId.isEmpty()) "$consuNineAnimeApi/watch/$data" else "$consuNineAnimeApi/watch/$data?server=$serverId"
-            val json = app.get(url).parsed<NineConsumet>()
-            val embedURL = json.embedURL
-            if (serverId.contains(Regex("(?i)vizcloud|mycloud")) || serverId.isEmpty()) {
-                json.sources?.map { ss ->
-                    val link = ss.url
-                    val sourceName = if (serverId.isEmpty()) "Vidstream" else "Mcloud"
-                    //getStream(link!!, sourceName, "https://vidstream.pro/", callback)
                     val ref = "https://vidstream.pro/"
-                    if (link != null) {
-                        generateM3u8(
-                            sourceName,
-                            link,
-                            ref
-                        ).apmap {
-                            val newQ = if (it.url.contains("/H4")) "1080"
-                            else if (it.url.contains("/H3")) "720"
-                            else if (it.url.contains("/H2")) "480"
-                            else if (it.url.contains("/H1")) "360"
-                            else "Auto"
-                            callback(
-                                ExtractorLink(
-                                    sourceName,
-                                    sourceName,
-                                    it.url,
-                                    ref,
-                                    getQualityFromName(newQ),
-                                    true
-                                )
+                    generateM3u8(
+                        "Vidstream",
+                        m3u8.replace("#.mp4",""),
+                        ref
+                    ).apmap {
+                        callback(
+                            ExtractorLink(
+                                "Vidstream",
+                                "Vidstream",
+                                it.url,
+                                ref,
+                                getQualityFromName(it.quality.toString()),
+                                true
                             )
-                        }
+                        )
                     }
                 }
             }
-            if (embedURL != null && serverId.contains(Regex("(?i)filemoon|streamtape"))) {
-                loadExtractor(embedURL, subtitleCallback, callback)
+            if (!sName.isNullOrEmpty() && sName != "vidstream") {
+                val bbbs = decUrlConsu(sId)
+                loadExtractor(bbbs, subtitleCallback, callback)
             }
         }
         return true
