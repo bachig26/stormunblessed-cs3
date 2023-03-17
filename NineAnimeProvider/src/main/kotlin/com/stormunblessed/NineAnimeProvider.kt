@@ -144,9 +144,9 @@ class NineAnimeProvider : MainAPI() {
         val backposter = backimgRegx.find(backimginfo.toString())?.value ?: poster
         val title = (info.selectFirst(".title") ?: info.selectFirst(".d-title"))?.text()
             ?: throw ErrorLoadingException("Could not find title")
-        val vrf = encode(consumetVrf(id))
-
-        val episodeListUrl = "$mainUrl/ajax/episode/list/$id?vrf250=${vrf}"
+        val vvhelp = consumetVrf(id)
+        val vrf = encode(vvhelp.url)
+        val episodeListUrl = "$mainUrl/ajax/episode/list/$id?${vvhelp.vrfQuery}=${vrf}"
         val body =
             app.get(episodeListUrl).parsedSafe<Response>()?.html
                 ?: throw ErrorLoadingException("Could not parse json with Vrf=$vrf id=$id url=\n$episodeListUrl")
@@ -305,17 +305,24 @@ class NineAnimeProvider : MainAPI() {
             }
         return sss
     }
-    private suspend fun consumetVrf(input: String): String{
-        val consuRes = app.get("https://api.consumet.org/anime/9anime/helper?query=$input&action=vrf").text
-        return consuRes.substringAfter("vrf\":\"").substringBefore("\"")
+
+
+    data class ConsumetVrfHelper (
+        @JsonProperty("url"      ) var url      : String,
+        @JsonProperty("vrfQuery" ) var vrfQuery : String
+    )
+    private suspend fun consumetVrf(input: String): ConsumetVrfHelper{
+        return app.get("https://api.consumet.org/anime/9anime/helper?query=$input&action=vrf").parsed<ConsumetVrfHelper>()
     }
     private suspend fun decUrlConsu(serverID: String):String {
-        val encID = consumetVrf(serverID)
-        val videncrr = app.get("$mainUrl/ajax/server/$serverID?vrf250=${encode(encID)}").parsed<Links>()
+        val sa = consumetVrf(serverID)
+        val encID = sa.url
+        val videncrr = app.get("$mainUrl/ajax/server/$serverID?${sa.vrfQuery}=${encode(encID)}").parsed<Links>()
         val encUrl = videncrr.result?.url
         val ses = app.get("https://api.consumet.org/anime/9anime/helper?query=$encUrl&action=decrypt").text
-        return ses.substringAfter("vrf\":\"").substringBefore("\"")
+        return ses.substringAfter("url\":\"").substringBefore("\"")
     }
+
     override suspend fun loadLinks(
         data: String,
         isCasting: Boolean,
@@ -323,8 +330,9 @@ class NineAnimeProvider : MainAPI() {
         callback: (ExtractorLink) -> Unit
     ): Boolean {
         val parseData = AppUtils.parseJson<SubDubInfo>(data)
-        val datavrf = consumetVrf(parseData.ID)
-        val one = app.get("$mainUrl/ajax/server/list/${parseData.ID}?vrf250=${encode(datavrf)}").parsed<Response>()
+        val sa = consumetVrf(parseData.ID)
+        val datavrf = sa.url
+        val one = app.get("$mainUrl/ajax/server/list/${parseData.ID}?${sa.vrfQuery}=${encode(datavrf)}").parsed<Response>()
         val two = Jsoup.parse(one.html ?: return false)
         val aas = two.select("div.servers .type[data-type=${parseData.type}] li").mapNotNull {
             val datalinkId = it.attr("data-link-id")
@@ -334,8 +342,9 @@ class NineAnimeProvider : MainAPI() {
         }
         aas.apmap { (sName, sId) ->
             if (sName == "vidstream") {
-                val encID = consumetVrf(sId)
-                val videncrr = app.get("$mainUrl/ajax/server/$sId?vrf250=${encode(encID)}").parsed<Links>()
+                val sae = consumetVrf(sId)
+                val encID = sae.url
+                val videncrr = app.get("$mainUrl/ajax/server/$sId?${sae.vrfQuery}=${encode(encID)}").parsed<Links>()
                 val encUrl = videncrr.result?.url
                 if (encUrl != null) {
                     val asss = decUrlConsu(sId)
